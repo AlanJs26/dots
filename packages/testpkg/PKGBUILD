@@ -1,0 +1,16 @@
+description='a testpkg for testing'
+url='https://example.com'
+depends=('tabbed' 'pacman:ncdu')
+source=()
+
+install() {
+  echo testpkg install script
+}
+
+uninstall() {
+  echo testpkg uninstall script
+}
+
+check() {
+  echo testpkg check script
+}
