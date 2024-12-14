@@ -4,40 +4,38 @@ from typing import Any, Iterable
 import re
 from src.package_manager import package_managers, PackageManager
 from itertools import chain, groupby
+from dataclasses import dataclass
 
 CACHE_FOLDER = os.path.expanduser("~/.cache/archdots")
 
 
-def get_packages(folder) -> list[str]:
-    """
-    returns the path of all subfolders that contains a PKGBUILD
-    """
-    return list(
-        filter(
-            lambda x: "PKGBUILD" in os.listdir(os.path.join(folder, x)),
-            os.listdir(folder),
-        )
-    )
-
-
+@dataclass
 class Package:
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        url: str,
-        depends: list[str],
-        source: list[str],
-        pkgbuild: str,
-        available_functions: list[str],
-    ) -> None:
-        self.name = name
-        self.description = description
-        self.url = url
-        self.depends = depends
-        self.source = source
-        self.pkgbuild = pkgbuild
-        self.available_functions = available_functions
+    name: str
+    description: str
+    url: str
+    depends: list[str]
+    source: list[str]
+    pkgbuild: str
+    available_functions: list[str]
+
+    # def __init__(
+    #     self,
+    #     name: str,
+    #     description: str,
+    #     url: str,
+    #     depends: list[str],
+    #     source: list[str],
+    #     pkgbuild: str,
+    #     available_functions: list[str],
+    # ) -> None:
+    #     self.name = name
+    #     self.description = description
+    #     self.url = url
+    #     self.depends = depends
+    #     self.source = source
+    #     self.pkgbuild = pkgbuild
+    #     self.available_functions = available_functions
 
     def fetch_sources(self):
         """
@@ -101,6 +99,23 @@ class Package:
 class PackageException(Exception):
     def __init__(self, message) -> None:
         super().__init__(re.sub(r"^\s+", "", message, flags=re.MULTILINE))
+
+
+def get_packages(folder) -> list[Package]:
+    """
+    returns all packages inside folder (valid packages contains a PKGBUILD)
+    """
+
+    filtered_packages = list(
+        filter(
+            lambda x: "PKGBUILD" in os.listdir(os.path.join(folder, x)),
+            os.listdir(folder),
+        )
+    )
+    return [
+        package_from_path(os.path.join(folder, package_name))
+        for package_name in filtered_packages
+    ]
 
 
 def package_from_path(path) -> Package:

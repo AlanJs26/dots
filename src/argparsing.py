@@ -1,12 +1,11 @@
 import os
 import re
 import yaml
-import subprocess
 import importlib.util
 from pathlib import Path
 from itertools import chain
 from typing import NamedTuple, Any
-from argparse import _SubParsersAction, ArgumentParser, Namespace
+from argparse import _SubParsersAction, ArgumentParser, Namespace, ArgumentError
 from src.schema import ArgumentTypeEnum, ParserArgument, ParserConfig
 
 
@@ -71,7 +70,9 @@ def parser_from_file(filepath, subparser: _SubParsersAction) -> ArgumentParser:
         if isinstance(argument, ParserArgument):
             names = [argument.name]
         else:
-            names = [argument.short, argument.long]
+            names = [argument.long]
+            if "short" in argument:
+                names.append(argument.short)
         parser.add_argument(*filter(str, names), help=argument.help, **extra_args)
 
     return parser
@@ -83,21 +84,31 @@ class Depth(NamedTuple):
     path: str
 
 
-def parse_folder(folders: list[str]) -> tuple[ArgumentParser, dict[int, list[Depth]]]:
+def parse_folder(
+    folders: list[str], command_folder="commands"
+) -> tuple[ArgumentParser, dict[int, list[Depth]]]:
     """
     walks through all subfolders of all `folders` and setup and cli parser based on filestructure
     """
     # create the top-level parser
     parser = ArgumentParser(prog="archdots")
 
-    folderpath = folders[0]
+    folders = [os.path.join(folder, command_folder) for folder in folders]
 
-    depths = {0: [Depth(parser.add_subparsers(dest=folderpath), parser, folderpath)]}
+    depths = {
+        0: [Depth(parser.add_subparsers(dest=command_folder), parser, command_folder)]
+    }
 
     for current_folder, dirs, files in chain.from_iterable(
         os.walk(folder, topdown=True) for folder in folders
     ):
-        current_root = os.path.normpath(current_folder).split(os.sep)[1:]
+        current_folder_without_prefix = current_folder
+        for folder in sorted(folders, key=len, reverse=True):
+            if current_folder.startswith(folder):
+                current_folder_without_prefix = current_folder.replace(folder, "", 1)
+                break
+
+        current_root = os.path.normpath(current_folder_without_prefix).split(os.sep)[1:]
 
         if current_root and current_root[-1].startswith("_"):
             continue
@@ -121,9 +132,16 @@ def parse_folder(folders: list[str]) -> tuple[ArgumentParser, dict[int, list[Dep
 
             previous_depth = depths[len(current_root) - 1][-1]
 
-            new_parser = parser_from_file(current_folder, previous_depth.subparser)
+            try:
+                new_parser = parser_from_file(current_folder, previous_depth.subparser)
+            except ArgumentError as e:
+                if current_root[-1] == command_folder:
+                    continue
+                raise e
+
             new_sub_parser = new_parser.add_subparsers(dest=current_root[-1])
             current_depths.append(Depth(new_sub_parser, new_parser, current_folder))
+
         else:
             # fallback. Will never happen, but lsp bother if left without it
             current_depths = depths[len(current_root)]
@@ -142,8 +160,21 @@ def parse_folder(folders: list[str]) -> tuple[ArgumentParser, dict[int, list[Dep
     return (parser, depths)
 
 
-def run_command(args: Namespace, root: str, depths: dict[int, list[Depth]]):
-    path = root
+def run_command(
+    args: Namespace,
+    root_basename: str,
+    roots: list[str],
+    depths: dict[int, list[Depth]],
+):
+    """
+    find correct command based on argparse result
+
+    `args` argparse result
+    `root_basename` name of the folder containing rules
+    `roots` path of all folders to search for commands
+    `depths` dictionary returned from `parse_folder` that contains all subparsers for each command
+    """
+    path = root_basename
     args_dict: dict[str, Any] = vars(args)
     # extract command path and arguments from argparse Namespace
     while (current_command := os.path.basename(path)) in args_dict:
@@ -152,6 +183,22 @@ def run_command(args: Namespace, root: str, depths: dict[int, list[Depth]]):
 
         path = os.path.join(path, args_dict[current_command])
         del args_dict[current_command]
+
+    # check which root that contains the command
+    for root in sorted(roots, key=len, reverse=True):
+        abs_path = Path(root) / path
+        if os.path.exists(abs_path) or (
+            Path(abs_path).parent.exists()
+            and next(
+                filter(
+                    lambda x: without_ext(x) == without_ext(path),
+                    os.listdir(Path(abs_path).parent),
+                ),
+                None,
+            )
+        ):
+            path = abs_path
+            break
 
     # the path to a command can be a folder or a file.
     parent = path
@@ -167,8 +214,10 @@ def run_command(args: Namespace, root: str, depths: dict[int, list[Depth]]):
         splited_path = os.path.normpath(path).split(os.sep)[1:]
         # find the subparser associated with path
         subparser = next(
-            filter(lambda d: d.path == path, depths[len(splited_path)]), None
+            filter(lambda d: Path(d.path) == Path(path), depths[len(splited_path)]),
+            None,
         )
+
         # This should never happen.
         if not subparser:
             raise Exception(
@@ -204,7 +253,7 @@ def run_command(args: Namespace, root: str, depths: dict[int, list[Depth]]):
             spec.loader.exec_module(module)
         pass
     else:
-        # convert all arguments into bash variable declarations and source it
+        # convert all arguments into variable
         bashdict = ""
         for key, value in args_dict.items():
             bashdict += f'["{key}"]={parse_value(value)} '
@@ -215,4 +264,4 @@ def run_command(args: Namespace, root: str, depths: dict[int, list[Depth]]):
         else:
             command = f"{bashdict}\n./{fullpath.replace(' ', '\\ ')}"
 
-        subprocess.Popen(command, shell=True)
+        os.system(command)

@@ -1,18 +1,11 @@
 #/bin/env bash
 
 : <<ARCHDOTS
-help: isso é uma mensagem de ajuda
-arguments:
-  - name: group
-    required: false
-    type: str
-    nargs: 2
-    help: ajuda de group
-flags:
-  - long: --list
-    short: -l
-    type: bool
-    help: isso é uma lista
+help: show diff since last dotfiles sync
 ARCHDOTS
 
-echo "${args[group]}"
+if [[ ! $(chezmoi diff) ]]; then
+  (cd ~/.local/share/chezmoi && git diff --cached)
+else
+  chezmoi diff --reverse --pager 'delta'
+fi

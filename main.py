@@ -6,18 +6,25 @@ from src.package import (
     package_from_path,
     PackageException,
 )
+from src.settings import read_config
+from pathlib import Path
+
+CONFIG_PATH = os.path.expanduser("~/.config/archdots")
+COMMANDS_FOLDER = "commands"
 
 
 def main():
     """
     archdots entrypoint
     """
-    root = "commands"
-    parser, depths = parse_folder([root])
+    roots = [".", CONFIG_PATH]
+    parser, depths = parse_folder(roots, COMMANDS_FOLDER)
     args = parser.parse_args()
 
+    # print(read_config())
+
     # print(args)
-    run_command(args, root, depths)
+    run_command(args, COMMANDS_FOLDER, roots, depths)
     # print(get_packages("packages"))
 
     # packages_folder = "packages"
