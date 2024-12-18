@@ -17,12 +17,6 @@ from src.constants import MODULE_PATH
 
 packages = {pm.name: pm.get_installed() for pm in package_managers}
 
-custom_packages = get_packages(str(Path(MODULE_PATH) / "packages"))
-
-packages["custom"] = [
-    pkg.name for pkg in custom_packages if pkg.check(supress_output=True)
-]
-
 config = read_config()
 
 if "pkgs" not in config:

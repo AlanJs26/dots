@@ -21,3 +21,4 @@ if not isinstance(menu_entry_index, int):
 selected_package = all_packages[menu_entry_index]
 
 os.system(f'$EDITOR "{selected_package.pkgbuild}"')
+

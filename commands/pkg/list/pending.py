@@ -8,21 +8,11 @@ ARCHDOTS
 args = args  # type: ignore
 
 import sys
-from src.package import get_packages
-from pathlib import Path
 from rich import print
 from src.package_manager import package_managers
 from src.settings import read_config
-from src.constants import MODULE_PATH
-
 
 packages = {pm.name: pm.get_installed() for pm in package_managers}
-
-custom_packages = get_packages(str(Path(MODULE_PATH) / "packages"))
-
-packages["custom"] = [
-    pkg.name for pkg in custom_packages if pkg.check(supress_output=True)
-]
 
 config = read_config()
 

@@ -1,4 +1,4 @@
-from src.package import Package, get_packages, is_package_valid
+from src.package import Package, get_packages, is_packages_valid
 from src.package_manager import package_managers
 from rich import print
 from rich.prompt import Prompt, Confirm
@@ -68,7 +68,7 @@ new_pkg = Package(
     ["check", "install", "uninstall"],
 )
 
-is_package_valid([*all_packages, new_pkg])
+is_packages_valid([*all_packages, new_pkg])
 
 new_pkgbuild = f'''
 pkgname={pkg_name}

@@ -1,5 +1,8 @@
 import subprocess
 from abc import abstractmethod
+from src.package import get_packages, Package, install_packages, uninstall_packages
+from src.constants import MODULE_PATH
+from pathlib import Path
 
 
 class SingletonMeta(type):
@@ -82,4 +85,45 @@ class Pacman(PackageManager):
         return which(self.aur_helper.split()[-1]) is not None
 
 
-package_managers = [Pacman()]
+class Custom(PackageManager):
+    def __init__(self) -> None:
+        super().__init__("custom")
+
+    @staticmethod
+    def _filter_custom_packages(
+        target_pkgs: list[str] | list[Package], all_packages: list[Package]
+    ) -> list[Package]:
+        if any(isinstance(pkg, Package) for pkg in target_pkgs):
+            return target_pkgs  # type: ignore
+        else:
+            return list(filter(lambda pkg: pkg.name in target_pkgs, all_packages))
+
+    def get_packages(self) -> list[Package]:
+        return get_packages(str(Path(MODULE_PATH) / "packages"))
+
+    def get_installed(self) -> list[str]:
+        custom_packages = self.get_packages()
+
+        return [pkg.name for pkg in custom_packages if pkg.check(supress_output=True)]
+
+    def install(self, packages: list[str] | list[Package]) -> bool:
+        all_packages = self.get_packages()
+        filtered_packages = self._filter_custom_packages(packages, all_packages)
+
+        install_packages(filtered_packages, all_packages)
+
+        return True
+
+    def uninstall(self, packages: list[str] | list[Package]) -> bool:
+        all_packages = self.get_packages()
+        filtered_packages = self._filter_custom_packages(packages, all_packages)
+
+        uninstall_packages(filtered_packages, all_packages)
+
+        return True
+
+    def is_available(self) -> bool:
+        return True
+
+
+package_managers = [Pacman(), Custom()]

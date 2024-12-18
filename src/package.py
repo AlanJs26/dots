@@ -57,7 +57,7 @@ class Package:
 
         process.communicate()
 
-        return process.returncode
+        return int(process.returncode)
 
     def check(self, supress_output=False):
         return self._run_pkgbuild_function("check", supress_output) == 0
@@ -186,11 +186,11 @@ def sort_packages(packages: list[Package]) -> list[Package]:
 
     priority_dict: dict[Package, int] = {package: 1 for package in packages}
 
-    def filter_local_packages(depends: list[str]) -> list[Package]:
+    def filter_custom_packages(depends: list[str]) -> list[Package]:
         return list(filter(lambda package: package.name in depends, packages))
 
     def give_priority(package: Package, traceback=[]) -> int:
-        local_dependencies = filter_local_packages(package.depends)
+        local_dependencies = filter_custom_packages(package.depends)
 
         if not local_dependencies or package in history:
             history.append(package)
@@ -250,7 +250,7 @@ def _get_external_dependencies(packages: list[Package]) -> list[str]:
     return dependencies
 
 
-def is_package_valid(packages: list[Package]):
+def is_packages_valid(packages: list[Package]):
     """
     given a list of packages, checks if all packages have correct dependencies.
     raises an Exception in case of invalid packages

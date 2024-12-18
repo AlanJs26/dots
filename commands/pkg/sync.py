@@ -8,21 +8,9 @@ ARCHDOTS
 args = args  # type: ignore
 
 import sys
-from src.package import get_packages
-from pathlib import Path
 from rich import print
-from src.package_manager import package_managers
+from src.package_manager import PackageManager, package_managers
 from src.settings import read_config
-from src.constants import MODULE_PATH
-
-
-packages = {pm.name: pm.get_installed() for pm in package_managers}
-
-custom_packages = get_packages(str(Path(MODULE_PATH) / "packages"))
-
-packages["custom"] = [
-    pkg.name for pkg in custom_packages if pkg.check(supress_output=True)
-]
 
 config = read_config()
 
@@ -30,16 +18,22 @@ if "pkgs" not in config:
     print("there is no pkgs configured", file=sys.stderr)
     exit()
 
-pending_packages: dict[str, list[str]] = {}
-for k in packages:
-    if k not in config["pkgs"]:
-        continue
-    pending_packages[k] = list(set(config["pkgs"][k]) - set(packages[k]))
+packages_by_pm = {pm: pm.get_installed() for pm in package_managers}
 
-unmanaged_packages: dict[str, list[str]] = {}
-for k in config["pkgs"]:
-    if k not in packages:
+pending_packages: dict[PackageManager, list[str]] = {}
+for pm in packages_by_pm:
+    if pm not in config["pkgs"]:
         continue
-    unmanaged_packages[k] = list(set(packages[k]) - set(config["pkgs"][k]))
+    pending_packages[pm] = list(set(config["pkgs"][pm]) - set(packages_by_pm[pm]))
+
+for pm, packages in pending_packages.items():
+    pm.install(packages)
+
+
+# unmanaged_packages: dict[str, list[str]] = {}
+# for pm in config["pkgs"]:
+#     if pm not in packages_by_pm:
+#         continue
+#     unmanaged_packages[pm] = list(set(packages_by_pm[pm]) - set(config["pkgs"][pm]))
 
 # :TODO: Finish this script. Need to install pending packages (custom and external) and run review command on unmanaged packages

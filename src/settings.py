@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import yaml
 from typing import Any
-from src.constants import MODULE_PATH
+from src.constants import CONFIG_FOLDER, MODULE_PATH
 
 
 def iterdict(d: dict[Any, Any], callback: Callable[[Any, Any], Any]) -> dict[Any, Any]:
@@ -17,7 +17,7 @@ def iterdict(d: dict[Any, Any], callback: Callable[[Any, Any], Any]) -> dict[Any
     return d_copy
 
 
-def read_config(custom_folder="~/.config/archdots"):
+def read_config(custom_folder=CONFIG_FOLDER):
     module_path = Path(MODULE_PATH)
 
     custom_folder = Path(os.path.expanduser(custom_folder))
@@ -53,3 +53,10 @@ def read_config(custom_folder="~/.config/archdots"):
         default_config = yaml.safe_load(f)
 
     return {**default_config, **config}
+
+
+def save_config(data: Any, custom_folder=CONFIG_FOLDER):
+    custom_folder = Path(os.path.expanduser(custom_folder))
+
+    with open(custom_folder / "config.yaml", "w") as f:
+        yaml.dump(data, f)

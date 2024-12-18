@@ -1,4 +1,4 @@
-from src.package import get_packages
+from src.package import PackageException, get_packages
 from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm
@@ -6,6 +6,8 @@ from src.constants import CONFIG_FOLDER
 from pathlib import Path
 
 import shutil
+
+from src.settings import read_config, save_config
 
 PACKAGES_PATH = Path(CONFIG_FOLDER) / "packages"
 print("[cyan]:: [/]Choose packages to delete")
@@ -34,6 +36,20 @@ if not Confirm.ask(
 ):
     exit()
 
+settings = read_config()
+
 for pkg in selected_packages:
+    if pkg.check():
+        print(f'[red]uninstalling "{pkg.name}"')
+        if not pkg.uninstall():
+            raise PackageException(f"Could not uninstall {pkg.name}")
     print(f'[red]removing "{Path(pkg.pkgbuild).parent}"')
     shutil.rmtree(Path(pkg.pkgbuild).parent)
+    if (
+        "pkg" in settings
+        and "custom" in settings["pkg"]
+        and pkg.name in settings["pkg"]["custom"]
+    ):
+        settings["pkg"]["custom"].remove(pkg.name)
+
+save_config(settings)
