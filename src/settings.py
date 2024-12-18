@@ -3,20 +3,22 @@ import os
 from pathlib import Path
 import yaml
 from typing import Any
+from src.constants import MODULE_PATH
 
 
-def iterdict(d, callback: Callable[[Any, Any], Any]):
+def iterdict(d: dict[Any, Any], callback: Callable[[Any, Any], Any]) -> dict[Any, Any]:
+    d_copy = d.copy()
     for k, v in d.items():
         if isinstance(v, dict):
-            iterdict(v, callback)
+            d_copy[k] = iterdict(v, callback)
         elif (result := callback(k, v)) != None:
-            d[k] = result
+            d_copy = {**d, **result}
+            del d_copy[k]
+    return d_copy
 
 
 def read_config(custom_folder="~/.config/archdots"):
-    import src
-
-    module_path = Path(list(src.__path__)[0]).parent
+    module_path = Path(MODULE_PATH)
 
     custom_folder = Path(os.path.expanduser(custom_folder))
 
@@ -45,6 +47,9 @@ def read_config(custom_folder="~/.config/archdots"):
 
     with open(custom_folder / "config.yaml", "r") as f:
         config = yaml.safe_load(f)
-        iterdict(config, handle_imports)
+        config = iterdict(config, handle_imports)
 
-    return config
+    with open(module_path / "config.default.yaml", "r") as f:
+        default_config = yaml.safe_load(f)
+
+    return {**default_config, **config}

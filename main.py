@@ -8,16 +8,14 @@ from src.package import (
 )
 from src.settings import read_config
 from pathlib import Path
-
-CONFIG_PATH = os.path.expanduser("~/.config/archdots")
-COMMANDS_FOLDER = "commands"
+from src.constants import CONFIG_FOLDER, COMMANDS_FOLDER
 
 
 def main():
     """
     archdots entrypoint
     """
-    roots = [".", CONFIG_PATH]
+    roots = [".", CONFIG_FOLDER]
     parser, depths = parse_folder(roots, COMMANDS_FOLDER)
     args = parser.parse_args()
 
@@ -40,5 +38,11 @@ if __name__ == "__main__":
     try:
         main()
     except (PackageException, ParseException, ValidationError) as e:
-        print(e)
+        from rich.console import Console
+
+        console = Console()
+
+        console.print(e, style="red")
         os._exit(1)
+    except KeyboardInterrupt:
+        pass

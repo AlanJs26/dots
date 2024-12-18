@@ -67,6 +67,14 @@ def parser_from_file(filepath, subparser: _SubParsersAction) -> ArgumentParser:
             case ArgumentTypeEnum.str | _:
                 extra_args = {"action": "store", "type": str, "nargs": argument.nargs}
 
+        if argument.choices:
+            extra_args = {
+                "action": "store",
+                "type": str,
+                "nargs": argument.nargs,
+                "choices": argument.choices,
+            }
+
         if isinstance(argument, ParserArgument):
             names = [argument.name]
         else:

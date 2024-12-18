@@ -1,3 +1,11 @@
 apps:
   terminal: kitty
   browser: vivaldi-snapshot
+
+pkgs:
+  custom:
+    - tabbed 
+    - alan
+  pacman:
+    - vim
+    - yt-dlp

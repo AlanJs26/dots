@@ -5,8 +5,7 @@ import re
 from src.package_manager import package_managers, PackageManager
 from itertools import chain, groupby
 from dataclasses import dataclass
-
-CACHE_FOLDER = os.path.expanduser("~/.cache/archdots")
+from src.constants import CACHE_FOLDER
 
 
 @dataclass
@@ -19,23 +18,8 @@ class Package:
     pkgbuild: str
     available_functions: list[str]
 
-    # def __init__(
-    #     self,
-    #     name: str,
-    #     description: str,
-    #     url: str,
-    #     depends: list[str],
-    #     source: list[str],
-    #     pkgbuild: str,
-    #     available_functions: list[str],
-    # ) -> None:
-    #     self.name = name
-    #     self.description = description
-    #     self.url = url
-    #     self.depends = depends
-    #     self.source = source
-    #     self.pkgbuild = pkgbuild
-    #     self.available_functions = available_functions
+    def __hash__(self) -> int:
+        return hash(self.name)
 
     def fetch_sources(self):
         """
@@ -56,41 +40,47 @@ class Package:
                 os.system(f'unzip "{downloaded_file}" -d "{self.get_cache_folder()}"')
                 os.system(f'rm "{downloaded_file}"')
 
-    def _run_pkgbuild_function(self, name):
+    def _run_pkgbuild_function(self, name, supress_output=False):
         os.makedirs(self.get_cache_folder(), exist_ok=True)
         command = f"""
         source {os.path.abspath(self.pkgbuild)}
         {name}
         """
 
-        process = subprocess.Popen(command, shell=True, cwd=self.get_cache_folder())
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.DEVNULL if supress_output else None,
+            stderr=subprocess.DEVNULL if supress_output else None,
+            cwd=self.get_cache_folder(),
+        )
 
         process.communicate()
 
         return process.returncode
 
-    def check(self):
-        return self._run_pkgbuild_function("check") == 0
+    def check(self, supress_output=False):
+        return self._run_pkgbuild_function("check", supress_output) == 0
 
-    def update(self):
-        if self.check() and "install" not in self.available_functions:
+    def update(self, supress_output=False):
+        if self.check(supress_output) and "install" not in self.available_functions:
             print("already installed")
             return
-        return self._run_pkgbuild_function("update") == 0
+        return self._run_pkgbuild_function("update", supress_output) == 0
 
-    def install(self):
-        if self.check():
+    def install(self, supress_output=False):
+        if self.check(supress_output):
             print("already installed")
             return
 
-        return self._run_pkgbuild_function("install") == 0
+        return self._run_pkgbuild_function("install", supress_output) == 0
 
-    def uninstall(self):
-        if not self.check():
+    def uninstall(self, supress_output=False):
+        if not self.check(supress_output):
             print("not installed. Cannot uninstall")
             return
 
-        return self._run_pkgbuild_function("uninstall") == 0
+        return self._run_pkgbuild_function("uninstall", supress_output) == 0
 
     def get_cache_folder(self):
         return os.path.join(CACHE_FOLDER, self.name)
@@ -224,12 +214,10 @@ def sort_packages(packages: list[Package]) -> list[Package]:
     for package in priority_dict:
         give_priority(package)
 
-    # print({key.name: value for key, value in priority_dict.items()})
-
     return sorted(priority_dict, key=lambda x: priority_dict[x])
 
 
-def get_external_dependencies(packages: list[Package]) -> list[str]:
+def _get_external_dependencies(packages: list[Package]) -> list[str]:
     """
     get all external dependencies (when package manager is needed) and raise an error on invalid dependencies
     """
@@ -247,24 +235,37 @@ def get_external_dependencies(packages: list[Package]) -> list[str]:
         for dep in external_dependencies:
             if ":" not in dep:
                 raise PackageException(
-                    f"""invalid dependency of "{package.name}": {dep}
+                    f"""invalid dependency of "{package.name}": "{dep}"
                     {dep} is not a custom package
                     missing package_manager especifier. i.e. "package_manager:{dep}"
-                    valid package_managers: {', '.join(pm_names)}"""
+                    valid package_managers: {', '.join('"' + n + '"' for n in pm_names)}"""
                 )
             elif dep.split(":")[0] not in pm_names:
                 raise PackageException(
-                    f"""invalid package manager of "{dep}": {dep.split(':')[0]}
-                    valid package_managers: {', '.join(pm_names)}"""
+                    f"""invalid package manager of "{dep}": "{dep.split(':')[0]}"
+                    valid package_managers: {', '.join('"' + n + '"' for n in pm_names)}"""
                 )
             dependencies.append(dep)
 
     return dependencies
 
 
-def _get_packages_and_dependencies(
+def is_package_valid(packages: list[Package]):
+    """
+    given a list of packages, checks if all packages have correct dependencies.
+    raises an Exception in case of invalid packages
+    """
+    split_external_dependencies(packages, packages)
+    return True
+
+
+def split_external_dependencies(
     packages: list[Package], all_packages: list[Package]
 ) -> tuple[dict[PackageManager, list[str]], list[Package]]:
+    """
+    given a list of target packages and a list of all packages available, returns a dictionary grouping all external dependencies by its package manager and a list of packages sorted by dependency order
+    """
+
     # given a list of dependencies returns local packages only
     def filter_local_packages(depends: list[str]) -> Iterable[Package]:
         return filter(lambda package: package.name in depends, all_packages)
@@ -280,7 +281,7 @@ def _get_packages_and_dependencies(
     sorted_packages = sort_packages(list(set(packages + dependencies)))
 
     # get all external depencies (need a package manager) and raise error on invalid dependencies
-    external_dependencies = get_external_dependencies(sorted_packages)
+    external_dependencies = _get_external_dependencies(sorted_packages)
 
     # build a dict grouping dependencies by package manager.
     ext_dependencies_by_pm: dict[PackageManager, list[str]] = {
@@ -295,7 +296,7 @@ def _get_packages_and_dependencies(
 
 
 def install_packages(packages: list[Package], all_packages: list[Package]):
-    ext_dependencies_by_pm, sorted_packages = _get_packages_and_dependencies(
+    ext_dependencies_by_pm, sorted_packages = split_external_dependencies(
         packages, all_packages
     )
 
@@ -311,7 +312,7 @@ def install_packages(packages: list[Package], all_packages: list[Package]):
 
 
 def uninstall_packages(packages: list[Package], all_packages: list[Package]):
-    ext_dependencies_by_pm, sorted_packages = _get_packages_and_dependencies(
+    ext_dependencies_by_pm, sorted_packages = split_external_dependencies(
         packages, all_packages
     )
 
