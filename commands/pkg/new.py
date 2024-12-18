@@ -1,5 +1,14 @@
-from src.package import Package, get_packages, is_packages_valid
-from src.package_manager import package_managers
+"""
+ARCHDOTS
+help: create a new custom package
+ARCHDOTS
+"""
+
+# this prevents the language server to throwing warnings
+args = args  # type: ignore
+
+from src.package import Package
+from src.package_manager import package_managers, is_packages_valid, Custom
 from rich import print
 from rich.prompt import Prompt, Confirm
 from src.constants import CONFIG_FOLDER
@@ -39,7 +48,7 @@ while pkg_sources and Confirm.ask(
         )
     )
 
-all_packages = get_packages(str(PACKAGES_PATH))
+all_packages = Custom().get_packages()
 
 print("[cyan]:: [/]Dependencies")
 print('dependencies are structured like "packagemanager:name". Ex:  apt:ping')

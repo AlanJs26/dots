@@ -1,6 +1,11 @@
 """
 ARCHDOTS
-help: list pending packages
+help: list unmanaged packages
+flags:
+    - long: --filter
+      type: str
+      nargs: +
+      help: filter by one or more package managers
 ARCHDOTS
 """
 
@@ -8,12 +13,9 @@ ARCHDOTS
 args = args  # type: ignore
 
 import sys
-from src.package import get_packages
-from pathlib import Path
 from rich import print
 from src.package_manager import package_managers
 from src.settings import read_config
-from src.constants import MODULE_PATH
 
 packages = {pm.name: pm.get_installed() for pm in package_managers}
 
@@ -31,6 +33,8 @@ for k in config["pkgs"]:
 
 for name, pkgs in unmanaged_packages.items():
     if not pkgs:
+        continue
+    if args["filter"] and name not in args["filter"]:
         continue
     print(f"[cyan]:: [/]{name}")
     for pkg_name in pkgs:

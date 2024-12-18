@@ -1,4 +1,14 @@
-from src.package import PackageException, get_packages
+"""
+ARCHDOTS
+help: delete a custom package
+ARCHDOTS
+"""
+
+# this prevents the language server to throwing warnings
+args = args  # type: ignore
+
+from src.package import PackageException
+from src.package_manager import Custom
 from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm
@@ -12,7 +22,7 @@ from src.settings import read_config, save_config
 PACKAGES_PATH = Path(CONFIG_FOLDER) / "packages"
 print("[cyan]:: [/]Choose packages to delete")
 
-all_packages = get_packages(str(PACKAGES_PATH))
+all_packages = Custom().get_packages()
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
 
 terminal_menu = TerminalMenu(

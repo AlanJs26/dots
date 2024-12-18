@@ -259,7 +259,6 @@ def run_command(
             module = importlib.util.module_from_spec(spec)
             module.__dict__["args"] = args_dict
             spec.loader.exec_module(module)
-        pass
     else:
         # convert all arguments into variable
         bashdict = ""
