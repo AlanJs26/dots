@@ -8,3 +8,4 @@ from pathlib import Path
 import src
 
 MODULE_PATH = str(Path(list(src.__path__)[0]).parent)
+CHEZMOI_FOLDER = os.path.expanduser("~/.local/share/chezmoi")

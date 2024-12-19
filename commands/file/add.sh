@@ -10,4 +10,4 @@ arguments:
     help: files to add
 ARCHDOTS
 
-bash -c "gum spin --title='Adding ${args[file]}...' -- chezmoi add ${args[file]}"
+gum spin --title="Adding ${args[file]}..." -- chezmoi add ${args[file]}

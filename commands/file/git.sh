@@ -10,5 +10,4 @@ arguments:
     help: 'custom arguments. To input long flags (i.e. --flag) you must insert "--" at the begining of the arguments. Ex: git -- status --staged'
 ARCHDOTS
 
-cd ~/.local/share/chezmoi
-git ${args[@]}
+chezmoi git -- ${args[@]}

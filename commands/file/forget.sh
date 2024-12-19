@@ -10,4 +10,4 @@ arguments:
     help: files/folders to forget
 ARCHDOTS
 
-bash -c "chezmoi forget ${args[file]}"
+chezmoi forget ${args[file]}
