@@ -1,11 +1,15 @@
-apps:
-  terminal: kitty
-  browser: vivaldi-snapshot
+# here is all files/folders that are re-added when the sync command is executed
+# additional files can be installed with "archdots file add"
+chezmoi:
+  - ~/.config/archdots
 
-pkgs:
-  custom:
-    - tabbed 
-    - alan
-  pacman:
-    - vim
-    - yt-dlp
+# here is listed all packages that must be installed
+# pkgs:
+#   custom:
+#     - custom_package1
+#     - custom_package2
+#   pacman:
+#     - package1
+#     - package2
+
+

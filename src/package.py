@@ -89,7 +89,7 @@ class PackageException(Exception):
         super().__init__(re.sub(r"^\s+", "", message, flags=re.MULTILINE))
 
 
-def get_packages(folder) -> list[Package]:
+def get_packages(folder: str) -> list[Package]:
     """
     returns all packages inside folder (valid packages contains a PKGBUILD)
     """

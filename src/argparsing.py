@@ -7,6 +7,7 @@ from itertools import chain
 from typing import NamedTuple, Any
 from argparse import _SubParsersAction, ArgumentParser, Namespace, ArgumentError
 from src.schema import ArgumentTypeEnum, ParserArgument, ParserConfig
+from src.constants import COMMANDS_FOLDER
 
 
 class ParseException(Exception):
@@ -93,7 +94,7 @@ class Depth(NamedTuple):
 
 
 def parse_folder(
-    folders: list[str], command_folder="commands"
+    folders: list[str], command_folder_basename=os.path.basename(COMMANDS_FOLDER)
 ) -> tuple[ArgumentParser, dict[int, list[Depth]]]:
     """
     walks through all subfolders of all `folders` and setup and cli parser based on filestructure
@@ -101,10 +102,16 @@ def parse_folder(
     # create the top-level parser
     parser = ArgumentParser(prog="archdots")
 
-    folders = [os.path.join(folder, command_folder) for folder in folders]
+    folders = [os.path.join(folder, command_folder_basename) for folder in folders]
 
     depths = {
-        0: [Depth(parser.add_subparsers(dest=command_folder), parser, command_folder)]
+        0: [
+            Depth(
+                parser.add_subparsers(dest=command_folder_basename),
+                parser,
+                command_folder_basename,
+            )
+        ]
     }
 
     for current_folder, dirs, files in chain.from_iterable(
@@ -143,7 +150,7 @@ def parse_folder(
             try:
                 new_parser = parser_from_file(current_folder, previous_depth.subparser)
             except ArgumentError as e:
-                if current_root[-1] == command_folder:
+                if current_root[-1] == command_folder_basename:
                     continue
                 raise e
 

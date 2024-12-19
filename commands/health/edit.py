@@ -1,11 +1,11 @@
 """
 ARCHDOTS
-help: open a custom package in default editor
+help: open a health script in default editor
 arguments:
   - name: name
     required: false
     type: str
-    help: package to edit
+    help: script to edit
 ARCHDOTS
 """
 
@@ -14,21 +14,22 @@ args = args  # type: ignore
 
 from simple_term_menu import TerminalMenu
 from rich import print
-from src.package_manager import Custom
+from src.constants import HEALTH_FOLDER
+from src.package import get_packages
 
 import os
 
-all_packages = Custom().get_packages()
+all_packages = get_packages(HEALTH_FOLDER)
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
 
 name = args["name"]
 if name:
     if name not in packages_by_name:
-        print(f'unknown package "{name}"')
+        print(f'unknown health script "{name}"')
         exit()
     selected_package = packages_by_name[name]
 else:
-    print("[cyan]:: [/]Choose which package to edit")
+    print("[cyan]:: [/]Choose which heath script to edit")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages], show_search_hint=True

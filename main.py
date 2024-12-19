@@ -10,10 +10,10 @@ def main():
     archdots entrypoint
     """
     roots = [".", CONFIG_FOLDER]
-    parser, depths = parse_folder(roots, COMMANDS_FOLDER)
+    parser, depths = parse_folder(roots, os.path.basename(COMMANDS_FOLDER))
     args = parser.parse_args()
 
-    run_command(args, COMMANDS_FOLDER, roots, depths)
+    run_command(args, os.path.basename(COMMANDS_FOLDER), roots, depths)
 
 
 if __name__ == "__main__":

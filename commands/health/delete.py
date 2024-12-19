@@ -1,37 +1,32 @@
 """
 ARCHDOTS
-help: delete a custom package
+help: delete a health script
 arguments:
   - name: name
     required: false
     type: str
     nargs: "*"
-    help: package to delete
+    help: script to delete
 ARCHDOTS
 """
 
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from src.package import PackageException
-from src.package_manager import Custom
+from src.package import PackageException, get_packages
 from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm
-from src.constants import CONFIG_FOLDER
+from src.constants import HEALTH_FOLDER
 from pathlib import Path
 
 import shutil
 
-from src.settings import read_config, save_config
-
-PACKAGES_PATH = Path(CONFIG_FOLDER) / "packages"
-
-all_packages = Custom().get_packages()
+all_packages = get_packages(HEALTH_FOLDER)
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
 
 if not all_packages:
-    print("there are any packages delete")
+    print("there are any health scripts to delete")
     exit()
 
 if args["name"]:
@@ -41,7 +36,7 @@ if args["name"]:
             exit()
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
-    print("[cyan]:: [/]Choose packages to delete")
+    print("[cyan]:: [/]Choose health scripts to delete")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages],
@@ -64,20 +59,10 @@ if not Confirm.ask(
 ):
     exit()
 
-settings = read_config()
-
 for pkg in selected_packages:
     if pkg.check(supress_output=True):
-        print(f'[red]uninstalling "{pkg.name}"')
+        print(f'[red]unconfiguring "{pkg.name}"')
         if not pkg.uninstall():
-            raise PackageException(f"Could not uninstall {pkg.name}")
+            raise PackageException(f"Could not unconfigure {pkg.name}")
     print(f'[red]removing "{Path(pkg.pkgbuild).parent}"')
     shutil.rmtree(Path(pkg.pkgbuild).parent)
-    if (
-        "pkg" in settings
-        and "custom" in settings["pkg"]
-        and pkg.name in settings["pkg"]["custom"]
-    ):
-        settings["pkg"]["custom"].remove(pkg.name)
-
-save_config(settings)
