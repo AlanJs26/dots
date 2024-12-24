@@ -3,7 +3,7 @@ import subprocess
 from typing import Any
 import re
 from dataclasses import dataclass
-from src.constants import CACHE_FOLDER
+from src.constants import CACHE_FOLDER, PLATFORM
 
 
 @dataclass
@@ -15,6 +15,7 @@ class Package:
     source: list[str]
     pkgbuild: str
     available_functions: list[str]
+    platform: str = "linux"
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -85,38 +86,42 @@ class Package:
 
 
 class PackageException(Exception):
-    def __init__(self, message) -> None:
+    def __init__(self, message, pkg_name="") -> None:
+        if pkg_name:
+            message = f"Exception for '{pkg_name}' package\n{message}"
         super().__init__(re.sub(r"^\s+", "", message, flags=re.MULTILINE))
 
 
-def get_packages(folder: str) -> list[Package]:
+def get_packages(folder: str, ignore_platform=False) -> list[Package]:
     """
     returns all packages inside folder (valid packages contains a PKGBUILD)
     """
 
-    filtered_packages = list(
-        filter(
-            lambda x: "PKGBUILD" in os.listdir(os.path.join(folder, x)),
-            os.listdir(folder),
-        )
-    )
-    return [
-        package_from_path(os.path.join(folder, package_name))
-        for package_name in filtered_packages
-    ]
+    filtered_packages = []
+    for root, _, files in os.walk(folder, topdown=True):
+        if "PKGBUILD" not in files:
+            continue
+        filtered_packages.append(root)
+
+    packages = [package_from_path(pkgbuild_path) for pkgbuild_path in filtered_packages]
+    if ignore_platform:
+        return packages
+    return list(filter(lambda pkg: PLATFORM == pkg.platform, packages))
 
 
-def package_from_path(path) -> Package:
+def package_from_path(folder_path) -> Package:
     """
     given a path to a folder that contains a PKGBUILD, run it and extract all desired fields.
     raise an error when there is some funciton/field missing.
     """
+    pkg_name = os.path.basename(folder_path)
     known_fields = [
         "depends",
         "description",
         "source",
         "url",
     ]
+    optional_fields = ["platform"]
     known_funcs = [
         "check",
         "install",
@@ -124,8 +129,8 @@ def package_from_path(path) -> Package:
     ]
     command = f"""
     prev="$(declare -p)"
-    source {path}/PKGBUILD
-    diff <(cat<<<$prev) <(declare -p) |cut -d' ' -f4-|grep -E '^({'|'.join(known_fields)})'
+    source {folder_path}/PKGBUILD
+    diff <(cat<<<$prev) <(declare -p) |cut -d' ' -f4-|grep -E '^({'|'.join([*known_fields, *optional_fields])})'
     echo ===
     declare -F|cut -d' ' -f3-|grep -E '^({'|'.join(known_funcs)})'
     """
@@ -139,7 +144,7 @@ def package_from_path(path) -> Package:
         text=True,
     )
     if not process.stdout:
-        raise PackageException("could not read PKGBUILD")
+        raise PackageException("could not read PKGBUILD", pkg_name)
 
     vars_text, func_text, *_ = process.stdout.read().split("===")
 
@@ -159,18 +164,24 @@ def package_from_path(path) -> Package:
 
     missing_fields = list(set(known_fields).difference(fields_dict.keys()))
     if missing_fields:
-        raise PackageException(f"missing fields: {missing_fields}")
+        raise PackageException(f"missing fields: {missing_fields}", pkg_name)
 
     # filter out empty strings
     funcs = list(filter(str, func_text.splitlines()))
 
     missing_funcs = list(set(known_funcs).difference(funcs))
     if missing_funcs:
-        raise PackageException(f"missing functions: {missing_funcs}")
+        raise PackageException(f"missing functions: {missing_funcs}", pkg_name)
+
+    if "platform" in fields_dict and fields_dict["platform"] not in [
+        "linux",
+        "windows",
+    ]:
+        raise PackageException(f'invalid platform: {fields_dict["platform"]}', pkg_name)
 
     return Package(
-        name=os.path.basename(path),
-        pkgbuild=os.path.join(path, "PKGBUILD"),
+        name=os.path.basename(folder_path),
+        pkgbuild=os.path.join(folder_path, "PKGBUILD"),
         available_functions=funcs,
         **fields_dict,
     )

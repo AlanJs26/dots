@@ -2,6 +2,12 @@ from pathlib import Path
 import os
 import src
 
+match os.name:
+    case "nt":
+        PLATFORM = "windows"
+    case _:
+        PLATFORM = "linux"
+
 CONFIG_FOLDER = os.path.expanduser("~/.config/archdots")
 
 COMMANDS_FOLDER = os.path.join(CONFIG_FOLDER, "commands")

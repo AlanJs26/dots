@@ -3,8 +3,7 @@ from abc import abstractmethod
 from src.package import get_packages, Package, PackageException
 from typing import Iterable
 from itertools import chain, groupby
-from src.constants import MODULE_PATH
-from pathlib import Path
+from src.constants import PACKAGES_FOLDER
 
 
 class SingletonMeta(type):
@@ -220,7 +219,7 @@ class Custom(PackageManager):
             return list(filter(lambda pkg: pkg.name in target_pkgs, all_packages))
 
     def get_packages(self) -> list[Package]:
-        return get_packages(str(Path(MODULE_PATH) / "packages"))
+        return get_packages(PACKAGES_FOLDER)
 
     def get_installed(self) -> list[str]:
         custom_packages = self.get_packages()

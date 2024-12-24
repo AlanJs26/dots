@@ -66,11 +66,12 @@ new_pkg = Package(
 is_packages_valid([*all_packages, new_pkg])
 
 new_pkgbuild = f'''
-pkgname={pkg_name}
 description='{pkg_description.replace("'", "\\'")}'
 url=''
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=()
+# make this health script platform specific. Supported platforms: linux, windows 
+# platform='linux'
 
 # All items of source will be downloaded and extracted (when necessary)
 # This script is ran inside a folder over ~/.cache/archdots/pkgname, where all sources are downloaded
