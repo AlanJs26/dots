@@ -17,19 +17,20 @@ from rich import print
 from src.package_manager import package_managers
 from src.settings import read_config
 
-packages = {pm.name: pm.get_installed() for pm in package_managers}
+installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 
 config = read_config()
 
 if "pkgs" not in config:
-    print("there is no pkgs configured", file=sys.stderr)
-    exit()
+    config["pkgs"] = {}
 
 unmanaged_packages: dict[str, list[str]] = {}
-for k in config["pkgs"]:
-    if k not in packages:
-        continue
-    unmanaged_packages[k] = list(set(packages[k]) - set(config["pkgs"][k]))
+for pm_name in config["pkgs"]:
+    if pm_name not in installed_pkgs_by_pm:
+        config["pkgs"][pm_name] = []
+    unmanaged_packages[pm_name] = list(
+        set(installed_pkgs_by_pm[pm_name]) - set(config["pkgs"][pm_name])
+    )
 
 for name, pkgs in unmanaged_packages.items():
     if not pkgs:

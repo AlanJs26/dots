@@ -4,6 +4,14 @@ from typing import Any
 import re
 from dataclasses import dataclass
 from src.constants import CACHE_FOLDER, PLATFORM
+from src.utils import is_url_valid
+
+
+class PackageException(Exception):
+    def __init__(self, message, pkg_name="") -> None:
+        if pkg_name:
+            message = f"Exception for '{pkg_name}' package\n{message}"
+        super().__init__(re.sub(r"^\s+", "", message, flags=re.MULTILINE))
 
 
 @dataclass
@@ -16,6 +24,23 @@ class Package:
     pkgbuild: str
     available_functions: list[str]
     platform: str = "linux"
+
+    def __post_init__(self):
+        if not self.name or not self.description:
+            raise PackageException("all packages must have a name and description")
+        if not all(":" in dep for dep in self.depends):
+            raise PackageException(
+                "all dependencies in must have a package manager specifier"
+            )
+        if ":" in self.name:
+            raise PackageException(": are not allowed in package names")
+
+        if self.url and not is_url_valid(self.url):
+            raise PackageException(f'url "{self.url}" is bad formated')
+        if not all(is_url_valid(source) for source in self.source):
+            raise PackageException(f"invalid source(s)")
+        if not os.path.isfile(self.pkgbuild):
+            raise PackageException(f"pkgbuild must be a valid file")
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -83,13 +108,6 @@ class Package:
 
     def get_cache_folder(self):
         return os.path.join(CACHE_FOLDER, self.name)
-
-
-class PackageException(Exception):
-    def __init__(self, message, pkg_name="") -> None:
-        if pkg_name:
-            message = f"Exception for '{pkg_name}' package\n{message}"
-        super().__init__(re.sub(r"^\s+", "", message, flags=re.MULTILINE))
 
 
 def get_packages(folder: str, ignore_platform=False) -> list[Package]:
@@ -172,6 +190,10 @@ def package_from_path(folder_path) -> Package:
     missing_funcs = list(set(known_funcs).difference(funcs))
     if missing_funcs:
         raise PackageException(f"missing functions: {missing_funcs}", pkg_name)
+
+    fields_dict["depends"] = [
+        ("custom:" + dep if ":" not in dep else dep) for dep in fields_dict["depends"]
+    ]
 
     if "platform" in fields_dict and fields_dict["platform"] not in [
         "linux",

@@ -17,7 +17,7 @@ from rich import print
 from src.package_manager import package_managers
 from src.settings import read_config
 
-packages = {pm.name: pm.get_installed() for pm in package_managers}
+installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 
 config = read_config()
 
@@ -26,10 +26,12 @@ if "pkgs" not in config:
     exit()
 
 pending_packages: dict[str, list[str]] = {}
-for k in packages:
-    if k not in config["pkgs"]:
+for pm_name in installed_pkgs_by_pm:
+    if pm_name not in config["pkgs"]:
         continue
-    pending_packages[k] = list(set(config["pkgs"][k]) - set(packages[k]))
+    pending_packages[pm_name] = list(
+        set(config["pkgs"][pm_name]) - set(installed_pkgs_by_pm[pm_name])
+    )
 
 for name, pkgs in pending_packages.items():
     if not pkgs:

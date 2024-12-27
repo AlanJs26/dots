@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Rectangle {
+  property QtObject backend_instance
 
   property int pendingPackages
   property int unmanagedPackages
@@ -10,6 +11,26 @@ Rectangle {
   color: "#D9D9D9"
   width: 270
   Layout.fillHeight: true
+
+  RowLayout {
+    width: parent.width
+
+    spacing: 10
+    IconButton {
+      size: 25
+      Layout.alignment: Qt.AlignLeft
+      icon.source: "../icons/refresh.png"
+      onClicked: { 
+        backend_instance.refresh_packages()
+      }
+    }
+    IconButton {
+      size: 25
+      Layout.alignment: Qt.AlignRight
+      icon.source: "../icons/cog.png"
+    }
+  }
+
   ColumnLayout {
     width: parent.width
     height: parent.height
@@ -22,6 +43,7 @@ Rectangle {
       ColumnLayout {
         spacing: 0
         Text {
+          objectName: "pendingPackagesNumber"
           text: pendingPackages
           Layout.alignment: Qt.AlignHCenter
           font.pointSize: 32
@@ -34,6 +56,7 @@ Rectangle {
       ColumnLayout {
         spacing: 0
         Text {
+          objectName: "unmanagedPackagesNumber"
           text: unmanagedPackages
           Layout.alignment: Qt.AlignHCenter
           font.pointSize: 32
@@ -45,15 +68,13 @@ Rectangle {
       }
     }
 
-    RowLayout {
+    // RowLayout {
+    //   Layout.alignment: Qt.AlignHCenter
+    //   spacing: 10
+    // }
+    StyledButton {
       Layout.alignment: Qt.AlignHCenter
-      spacing: 10
-      Text {
-        text: "C"
-      }
-      StyledButton {
-        text: "Instalar Pendentes"
-      }
+      text: "Instalar Pendentes"
     }
 
     Rectangle {
@@ -61,26 +82,43 @@ Rectangle {
     }
 
     ComboBox {
+      objectName: "comboBox"
       Layout.fillWidth: true
       Layout.preferredHeight: 40
       Layout.alignment: Qt.AlignHCenter
       model: [ "Gerenciados", "Não Gerenciados", "Pendentes"]
+      onActivated: { 
+        backend_instance.update_sidebar()
+      }
     }
 
     ScrollView {
       clip: true
       Layout.fillWidth: true
       Layout.fillHeight: true
-      ScrollBar.vertical.policy: ScrollBar.AlwaysOn
+      ScrollBar.vertical.policy: listView.contentHeight > listView.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
 
       ListView {
-        model: 80
+        objectName: "packagesList"
+        id: listView
+        focus: true
+        // model: 80
         delegate: ItemDelegate {
-          text: "Item " + index
-
+          required property var modelData
           required property int index
+
+          highlighted: ListView.isCurrentItem
+
+          text: modelData.name
+          width: listView.width
+
+          onClicked: { 
+            listView.currentIndex = index 
+            backend_instance.update_package_panel(modelData.name)
+          }
         }
       }
+
 
     }
 

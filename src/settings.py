@@ -6,6 +6,9 @@ from typing import Any, Iterable
 from src.constants import CONFIG_FOLDER, MODULE_PATH
 from rich import print
 
+_config_memo: dict[Any, Any] = {}
+_last_mtime = 0
+
 
 class SettingsException(Exception):
     pass
@@ -53,15 +56,20 @@ def iter_imports(imports_any: Any):
 
 
 def read_config():
+    global _last_mtime
+    global _config_memo
     module_path = Path(MODULE_PATH)
     custom_folder = Path(CONFIG_FOLDER)
+    config_path = custom_folder / "config.yaml"
 
-    if not os.path.isfile(custom_folder / "config.yaml"):
+    if not os.path.isfile(config_path):
         os.makedirs(custom_folder)
         with open(module_path / "config.default.yaml", "r") as f:
             default_config = f.read()
-        with open(custom_folder / "config.yaml", "w") as f:
+        with open(config_path, "w") as f:
             f.write(default_config)
+    elif _config_memo and config_path.lstat().st_mtime == _last_mtime:
+        return _config_memo
 
     def handle_imports(key: Any, value: Any):
         if key != "import":
@@ -79,14 +87,16 @@ def read_config():
 
         return merged_value
 
-    with open(custom_folder / "config.yaml", "r") as f:
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
         config = iterdict_merge(config, handle_imports)
 
     with open(module_path / "config.default.yaml", "r") as f:
         default_config = yaml.safe_load(f)
 
-    return {**default_config, **config}
+    _config_memo = {**default_config, **config}
+    _last_mtime = config_path.lstat().st_mtime
+    return _config_memo
 
 
 def iterdict_imports(
@@ -157,6 +167,6 @@ def save_config(data: Any):
     merged_config = read_config()
     with open(custom_folder / "config.yaml", "r") as f:
         config = yaml.safe_load(f)
-        new_config = iterdict_imports(merged_config, config, data)
+        new_config = iterdict_imports(merged_config, config, data)  # type: ignore
     print(f"\n=== config.yaml")
     print(new_config)

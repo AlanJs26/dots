@@ -8,7 +8,7 @@ ARCHDOTS
 args = args  # type: ignore
 
 from src.package import Package
-from src.package_manager import package_managers, is_packages_valid, Custom
+from src.package_manager import package_managers, are_custom_packages_valid, Custom
 from rich import print
 from rich.prompt import Prompt, Confirm
 from src.constants import PACKAGES_FOLDER
@@ -76,7 +76,7 @@ new_pkg = Package(
     ["check", "install", "uninstall"],
 )
 
-is_packages_valid([*all_packages, new_pkg])
+are_custom_packages_valid([*all_packages, new_pkg])
 
 new_pkgbuild = f'''
 description='{pkg_description.replace("'", "\\'")}'

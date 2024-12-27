@@ -4,20 +4,7 @@ from src.package import get_packages, Package, PackageException
 from typing import Iterable
 from itertools import chain, groupby
 from src.constants import PACKAGES_FOLDER
-
-
-class SingletonMeta(type):
-    """
-    Metaclasse para implementar o padrão Singleton.
-    """
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            # Cria a instância e armazena no dicionário
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]
+from src.utils import memoize, SingletonMeta
 
 
 class PackageManagerException(Exception):
@@ -41,49 +28,18 @@ class PackageManager(metaclass=SingletonMeta):
         raise NotImplemented
 
     @abstractmethod
-    def get_installed(self) -> list[str]:
+    def get_installed(self, use_memo=False) -> list[str]:
         raise NotImplemented
 
 
-class Pacman(PackageManager):
-    def __init__(self, aur_helper="yay") -> None:
-        super().__init__("pacman")
-        self.aur_helper = aur_helper
-
-    def get_installed(self) -> list[str]:
-        process = subprocess.Popen(
-            f"{self.aur_helper} -Qe|awk '{{print $1}}'",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            shell=True,
-            text=True,
-        )
-        if not process.stdout:
-            if process.stderr:
-                print(process.stderr.read())
-            raise PackageManagerException("could not run 'pacman -Qe'")
-
-        return [line.strip() for line in process.stdout.readlines()]
-
-    def install(self, packages: list[str]) -> bool:
-        process = subprocess.Popen(
-            f"{self.aur_helper} -Sy {' '.join(packages)}", shell=True
-        )
-        process.communicate()
-        return process.returncode == 0
-
-    def uninstall(self, packages: list[str]) -> bool:
-        process = subprocess.Popen(
-            f"{self.aur_helper} -R {' '.join(packages)}", shell=True
-        )
-        process.communicate()
-        return process.returncode == 0
-
-    def is_available(self) -> bool:
-        from shutil import which
-
-        return which(self.aur_helper.split()[-1]) is not None
+def split_packages_by_pm(packages: list[str]) -> dict[PackageManager, list[str]]:
+    pkgs_by_pm: dict[PackageManager, list[str]] = {
+        next(filter(lambda pm: pm.name == package_manager, package_managers)): [
+            pkg.split(":")[1] for pkg in pkgs
+        ]
+        for package_manager, pkgs in groupby(packages, lambda x: x.split(":")[0])
+    }
+    return pkgs_by_pm
 
 
 def split_external_dependencies(
@@ -136,7 +92,11 @@ def split_external_dependencies(
 
     # given a list of dependencies returns local packages only
     def filter_local_packages(depends: list[str]) -> Iterable[Package]:
-        return filter(lambda package: package.name in depends, all_packages)
+        return filter(
+            lambda package: ("custom:" + package.name in depends)
+            or (package.name in depends),
+            all_packages,
+        )
 
     # all local packages listed as dependencies of "packages"
     dependencies = list(
@@ -152,14 +112,8 @@ def split_external_dependencies(
     external_dependencies = _get_external_dependencies(sorted_packages)
 
     # build a dict grouping dependencies by package manager.
-    ext_dependencies_by_pm: dict[PackageManager, list[str]] = {
-        next(filter(lambda pm: pm.name == package_manager, package_managers)): [
-            dep.split(":")[1] for dep in dependencies
-        ]
-        for package_manager, dependencies in groupby(
-            external_dependencies, lambda x: x.split(":")[0]
-        )
-    }
+    ext_dependencies_by_pm = split_packages_by_pm(external_dependencies)
+
     return ext_dependencies_by_pm, sorted_packages
 
 
@@ -196,7 +150,7 @@ def _get_external_dependencies(packages: list[Package]) -> list[str]:
     return dependencies
 
 
-def is_packages_valid(packages: list[Package]):
+def are_custom_packages_valid(packages: list[Package]):
     """
     given a list of packages, checks if all packages have correct dependencies.
     raises an Exception in case of invalid packages
@@ -218,10 +172,12 @@ class Custom(PackageManager):
         else:
             return list(filter(lambda pkg: pkg.name in target_pkgs, all_packages))
 
-    def get_packages(self) -> list[Package]:
+    @memoize
+    def get_packages(self, use_memo=False) -> list[Package]:
         return get_packages(PACKAGES_FOLDER)
 
-    def get_installed(self) -> list[str]:
+    @memoize
+    def get_installed(self, use_memo=False) -> list[str]:
         custom_packages = self.get_packages()
 
         return [pkg.name for pkg in custom_packages if pkg.check(supress_output=True)]
@@ -277,4 +233,57 @@ class Custom(PackageManager):
         return True
 
 
-package_managers = [Pacman(), Custom()]
+class Pacman(PackageManager):
+    def __init__(self, aur_helper="yay") -> None:
+        super().__init__("pacman")
+        self.aur_helper = aur_helper
+
+    @memoize
+    def get_installed(self, use_memo=False) -> list[str]:
+        process = subprocess.Popen(
+            f"{self.aur_helper} -Qe|awk '{{print $1}}'",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            shell=True,
+            text=True,
+        )
+        if not process.stdout:
+            if process.stderr:
+                print(process.stderr.read())
+            raise PackageManagerException("could not run 'pacman -Qe'")
+
+        return [line.strip() for line in process.stdout.readlines()]
+
+    def install(self, packages: list[str]) -> bool:
+        process = subprocess.Popen(
+            f"{self.aur_helper} -Sy {' '.join(packages)}", shell=True
+        )
+        process.communicate()
+        return process.returncode == 0
+
+    def uninstall(self, packages: list[str]) -> bool:
+        process = subprocess.Popen(
+            f"{self.aur_helper} -R {' '.join(packages)}", shell=True
+        )
+        process.communicate()
+        return process.returncode == 0
+
+    def is_available(self) -> bool:
+        from shutil import which
+
+        return which(self.aur_helper.split()[-1]) is not None
+
+
+package_managers: list[PackageManager] = [Pacman(), Custom()]
+
+
+def check_packages(packages: list[str], use_memo=False) -> dict[str, bool]:
+    pkgs_by_pm = split_packages_by_pm(packages)
+
+    statuses = {}
+    for pm, pkgs in pkgs_by_pm.items():
+        for pkg in pkgs:
+            statuses[pkg] = pkg in pm.get_installed(use_memo)
+
+    return statuses

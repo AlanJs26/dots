@@ -4,16 +4,23 @@ import QtQuick.Layouts
 
 
 ColumnLayout {
+  property string markdown_text
+  property string pkgTitle
+  property string pkgDescription
+  property bool pkgManaged
+
+  id: packagePanel
+
   Layout.fillHeight: true
   Layout.fillWidth: true
   spacing: 0
 
   Label {
-    text: "Tabbed"
+    text: pkgTitle
     font.pointSize: 44
   }
   Label {
-    text: "simple generic tabbed fontend to xembed-aware applications"
+    text: pkgDescription
     font.pointSize: 14
   }
 
@@ -23,25 +30,20 @@ ColumnLayout {
     text: "dependencias"
     color: "#717171"
   }
+
   RowLayout {
-    Breadcrumb {
-      text: "libx11"
-      highlightColor: "green"
-      horizontalPadding: 20
-      verticalPadding: 10
+
+    Repeater {
+      objectName: "breadcrumbRepeater"
+      // model: breadcrumbModel
+      delegate: Breadcrumb {
+        text: model.modelData.text
+        highlightColor: model.modelData.installed ? "green" : "red"
+        horizontalPadding: 20
+        verticalPadding: 10
+      }
     }
-    Breadcrumb {
-      text: "rust"
-      highlightColor: "red"
-      horizontalPadding: 20
-      verticalPadding: 10
-    }
-    Breadcrumb {
-      text: "gcc"
-      highlightColor: "green"
-      horizontalPadding: 20
-      verticalPadding: 10
-    }
+
   }
 
   Spacer {}
@@ -51,7 +53,10 @@ ColumnLayout {
       text: "Instalar"
     }
     CheckBox {
+      id: managedCheckbox
+      checked: pkgManaged
       text: "Gerenciado"
+      Binding { packagePanel.pkgManaged: managedCheckbox.checked }
     }
     Spacer {
       Layout.fillWidth: true
@@ -67,10 +72,19 @@ ColumnLayout {
     Layout.fillWidth: true
   }
 
+  Spacer {}
 
-  Rectangle {
-    // color: ""
-    Layout.fillHeight: true
+  ScrollView {
+    clip: true
     Layout.fillWidth: true
+    Layout.fillHeight: true
+
+    Text {
+      Layout.fillHeight: true
+      Layout.fillWidth: true
+      textFormat: TextEdit.MarkdownText
+      text: markdown_text
+    }
   }
+
 }

@@ -25,6 +25,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "argparse" },
+    { name = "decorator" },
     { name = "pydantic" },
     { name = "pyside6" },
     { name = "pyyaml" },
@@ -35,11 +36,21 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "argparse", specifier = ">=1.4.0" },
+    { name = "decorator", specifier = ">=5.1.1" },
     { name = "pydantic", specifier = ">=2.10.2" },
     { name = "pyside6", specifier = "==6.8.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "simple-term-menu", specifier = ">=1.6.6" },
+]
+
+[[package]]
+name = "decorator"
+version = "5.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/0c/8d907af351aa16b42caae42f9d6aa37b900c67308052d10fdce809f8d952/decorator-5.1.1.tar.gz", hash = "sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330", size = 35016 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/50/83c593b07763e1161326b3b8c6686f0f4b0f24d5526546bee538c89837d6/decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186", size = 9073 },
 ]
 
 [[package]]
