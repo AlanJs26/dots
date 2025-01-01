@@ -14,7 +14,7 @@ args = args  # type: ignore
 
 from simple_term_menu import TerminalMenu
 from rich import print
-from src.package_manager import Custom
+from archdots.package_manager import Custom
 
 import os
 

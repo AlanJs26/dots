@@ -14,8 +14,8 @@ args = args  # type: ignore
 
 import sys
 from rich import print
-from src.package_manager import package_managers
-from src.settings import read_config
+from archdots.package_manager import package_managers
+from archdots.settings import read_config
 
 installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 

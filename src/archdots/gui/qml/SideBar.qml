@@ -74,7 +74,7 @@ Rectangle {
     // }
     StyledButton {
       Layout.alignment: Qt.AlignHCenter
-      text: "Instalar Pendentes"
+      text: "Sincronizar"
     }
 
     Rectangle {
@@ -83,12 +83,14 @@ Rectangle {
 
     ComboBox {
       objectName: "comboBox"
+      id: comboBox
       Layout.fillWidth: true
       Layout.preferredHeight: 40
       Layout.alignment: Qt.AlignHCenter
       model: [ "Gerenciados", "Não Gerenciados", "Pendentes"]
       onActivated: { 
         backend_instance.update_sidebar()
+        backend_instance.update_package_panel()
       }
     }
 
@@ -102,7 +104,9 @@ Rectangle {
         objectName: "packagesList"
         id: listView
         focus: true
-        // model: 80
+
+        property string currentName: listView.currentItem ? listView.currentItem.modelData.name : ''
+
         delegate: ItemDelegate {
           required property var modelData
           required property int index
@@ -114,7 +118,8 @@ Rectangle {
 
           onClicked: { 
             listView.currentIndex = index 
-            backend_instance.update_package_panel(modelData.name)
+            listView.currentName = modelData.name
+            backend_instance.update_package_panel()
           }
         }
       }

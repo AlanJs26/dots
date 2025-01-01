@@ -12,8 +12,8 @@ import itertools
 import tty, termios, sys
 from typing import NamedTuple, TypeVar
 
-from src.package_manager import PackageManager, package_managers
-from src.settings import read_config, save_config
+from archdots.package_manager import PackageManager, package_managers
+from archdots.settings import read_config, save_config
 
 from rich.live import Live
 from rich.table import Table

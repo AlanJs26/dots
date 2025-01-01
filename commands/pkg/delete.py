@@ -13,17 +13,17 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from src.package import PackageException
-from src.package_manager import Custom
+from archdots.package import PackageException
+from archdots.package_manager import Custom
 from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm
-from src.constants import CONFIG_FOLDER
+from archdots.constants import CONFIG_FOLDER
 from pathlib import Path
 
 import shutil
 
-from src.settings import read_config, save_config
+from archdots.settings import read_config, save_config
 
 PACKAGES_PATH = Path(CONFIG_FOLDER) / "packages"
 

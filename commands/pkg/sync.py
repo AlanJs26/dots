@@ -9,9 +9,9 @@ args = args  # type: ignore
 
 import sys
 from rich import print
-from src.constants import MODULE_PATH
-from src.package_manager import PackageManager, package_managers
-from src.settings import read_config
+from archdots.constants import MODULE_PATH
+from archdots.package_manager import PackageManager, package_managers
+from archdots.settings import read_config
 from rich.prompt import Confirm
 import importlib.util
 from pathlib import Path

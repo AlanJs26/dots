@@ -9,8 +9,8 @@ args = args  # type: ignore
 
 from rich import print
 
-from src.constants import HEALTH_FOLDER
-from src.package import get_packages
+from archdots.constants import HEALTH_FOLDER
+from archdots.package import get_packages
 import os
 
 os.makedirs(HEALTH_FOLDER, exist_ok=True)

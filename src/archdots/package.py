@@ -3,15 +3,8 @@ import subprocess
 from typing import Any
 import re
 from dataclasses import dataclass
-from src.constants import CACHE_FOLDER, PLATFORM
-from src.utils import is_url_valid
-
-
-class PackageException(Exception):
-    def __init__(self, message, pkg_name="") -> None:
-        if pkg_name:
-            message = f"Exception for '{pkg_name}' package\n{message}"
-        super().__init__(re.sub(r"^\s+", "", message, flags=re.MULTILINE))
+from archdots.constants import CACHE_FOLDER, PLATFORM
+from archdots.utils import is_url_valid, PackageException
 
 
 @dataclass

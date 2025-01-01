@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from src.settings import read_config
+from archdots.settings import read_config
 
 commands = {
     "re-add": "chezmoi re-add",

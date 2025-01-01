@@ -13,7 +13,7 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
-from src.package_manager import package_managers
+from archdots.package_manager import package_managers
 
 packages = {pm.name: pm.get_installed() for pm in package_managers}
 

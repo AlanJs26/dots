@@ -7,11 +7,11 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from src.package import Package
-from src.package_manager import package_managers, are_custom_packages_valid, Custom
+from archdots.package import Package
+from archdots.package_manager import package_managers, are_custom_packages_valid, Custom
 from rich import print
 from rich.prompt import Prompt, Confirm
-from src.constants import PACKAGES_FOLDER
+from archdots.constants import PACKAGES_FOLDER
 from pathlib import Path
 
 import os

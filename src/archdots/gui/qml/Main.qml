@@ -20,13 +20,19 @@ Window {
           backend_instance: backend
         }
 
-        PackagePanel {
-          id: packagePanel
-          objectName: "packagePanel"
-          pkgTitle: "Tabbed"
-          pkgDescription: "simple generic tabbed fontend to xembed-aware applications"
-          markdown_text: "## README"
-          // pkgManaged: false
+        Rectangle {
+          clip: true
+          Layout.fillHeight: true
+          Layout.fillWidth: true
+
+          PackagePanel {
+            id: packagePanel
+            objectName: "packagePanel"
+            pkgTitle: ""
+            pkgDescription: ""
+            markdown_text: ""
+            pkgManaged: false
+          }
         }
 
         Spacer {

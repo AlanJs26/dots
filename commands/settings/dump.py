@@ -1,7 +1,7 @@
 from rich.syntax import Syntax
 from rich.console import Console
 
-from src.settings import read_config
+from archdots.settings import read_config
 import yaml
 
 console = Console()

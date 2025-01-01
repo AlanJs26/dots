@@ -3,15 +3,11 @@ import os
 from pathlib import Path
 import yaml
 from typing import Any, Iterable
-from src.constants import CONFIG_FOLDER, MODULE_PATH
+from archdots.constants import CONFIG_FOLDER, MODULE_PATH
 from rich import print
 
 _config_memo: dict[Any, Any] = {}
 _last_mtime = 0
-
-
-class SettingsException(Exception):
-    pass
 
 
 def iterdict_merge(

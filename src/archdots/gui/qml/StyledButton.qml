@@ -6,12 +6,15 @@ Button {
   id: control
   text: "Instalar"
 
+  property string normalColor: "#4D82B2"
+  property string downColor: "#2A6194"
+
   leftPadding: 10
   rightPadding: 10
   topPadding: 5
   bottomPadding: 5
   background: Rectangle {
-    color: control.down ? "#2A6194" : "#4D82B2"
+    color: control.down ? downColor : normalColor
     radius: 5
   }
   contentItem: Text {

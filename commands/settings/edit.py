@@ -1,9 +1,9 @@
-from src.constants import CONFIG_FOLDER
+from archdots.constants import CONFIG_FOLDER
 from pathlib import Path
 
 import os
 
-from src.settings import read_config
+from archdots.settings import read_config
 
 CONFIG_PATH = Path(CONFIG_FOLDER) / "config.yaml"
 

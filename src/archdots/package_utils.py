@@ -1,5 +1,5 @@
-from src.package_manager import PackageManager, package_managers
-from src.settings import read_config
+from archdots.package_manager import PackageManager, package_managers
+from archdots.settings import read_config
 
 
 def get_unmanaged_packages(use_memo=True) -> dict[PackageManager, list[str]]:

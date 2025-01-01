@@ -13,11 +13,11 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from src.package import PackageException, get_packages
+from archdots.package import PackageException, get_packages
 from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm
-from src.constants import HEALTH_FOLDER
+from archdots.constants import HEALTH_FOLDER
 from pathlib import Path
 
 import shutil
