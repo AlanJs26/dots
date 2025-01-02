@@ -2,9 +2,10 @@ from collections.abc import Callable
 import os
 from pathlib import Path
 import yaml
-from typing import Any, Iterable
+from typing import Any
+
 from archdots.constants import CONFIG_FOLDER, MODULE_PATH
-from rich import print
+from archdots.exceptions import SettingsException
 
 _config_memo: dict[Any, Any] = {}
 _last_mtime = 0
@@ -121,32 +122,17 @@ def iterdict_imports(
                         raise SettingsException(
                             f'Invalid import. Contents of "{import_path}" is not a valid imported config. All imported files must contain at least one field'
                         )
-                    print(f"\n=== {import_path}")
-                    print(iterdict_imports(config, imported_config, d, ignore_new=True))
-                # with open(import_path, 'w') as f:
-                #     f.write(
-                #         yaml.dump(iterdict_imports(config, d_copy, imported_config))
-                #     )
+                with open(import_path, "w") as f:
+                    f.write(
+                        yaml.dump(
+                            iterdict_imports(
+                                config, imported_config, d, ignore_new=True
+                            )
+                        )
+                    )
         else:
             d_copy[k] = d[k]
     return d_copy
-
-
-"""
-# conteudo de config.yaml
-import: ./bla
-coisa: 1
-so_original: 1
-
-# conteudo de bla
-item_bla: 1
-
-# conteudo de novo_config.yaml
-item_bla: novo
-coisa: 2
-novo_item: 1
-
-"""
 
 
 def save_config(data: Any):
@@ -164,5 +150,6 @@ def save_config(data: Any):
     with open(custom_folder / "config.yaml", "r") as f:
         config = yaml.safe_load(f)
         new_config = iterdict_imports(merged_config, config, data)  # type: ignore
-    print(f"\n=== config.yaml")
-    print(new_config)
+
+    with open(custom_folder / "config.yaml", "w") as f:
+        f.write(yaml.dump(new_config))

@@ -4,7 +4,8 @@ from typing import Any
 import re
 from dataclasses import dataclass
 from archdots.constants import CACHE_FOLDER, PLATFORM
-from archdots.utils import is_url_valid, PackageException
+from archdots.utils import is_url_valid
+from archdots.exceptions import PackageException
 
 
 @dataclass

@@ -4,7 +4,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject
 
 from archdots.package_manager import Custom, PackageManager, check_packages
-from archdots.gui.utils import GuiException
+from archdots.exceptions import GuiException
 from archdots.package import Package
 from archdots.package_utils import (
     get_managed_packages,

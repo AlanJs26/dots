@@ -6,10 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "argparse>=1.4.0",
+    "dacite>=1.8.1",
     "decorator>=5.1.1",
     "plyer>=2.1.0",
     "psutil>=6.1.1",
-    "pydantic>=2.10.2",
     "pyside6==6.8.1",
     "pyyaml>=6.0.2",
     "rich>=13.9.4",

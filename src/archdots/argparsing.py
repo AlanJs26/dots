@@ -1,5 +1,7 @@
 import os
 import re
+from dacite import from_dict
+from dacite.exceptions import WrongTypeError
 import yaml
 
 from pathlib import Path
@@ -7,24 +9,23 @@ from itertools import chain
 from typing import Any, Optional
 from argparse import _SubParsersAction, ArgumentParser, Namespace
 
+from archdots.exceptions import ParseException
 from archdots.schema import (
-    ParserArgument,
-    ParserConfig,
-    ParserCommandTreeNode,
-    ParserFlag,
-    ParserArgument,
+    Argument,
+    Metadata,
+    CommandTreeNode,
+    Flag,
+    Argument,
 )
 
-MetadataDict = dict[str, ParserConfig]
+MetadataDict = dict[str, Metadata]
 ParserDict = dict[str, tuple[Path, ArgumentParser]]
 
 
-def parser_from_metadata(
-    name: str, metadata: ParserConfig, subparser: _SubParsersAction
-):
+def parser_from_metadata(name: str, metadata: Metadata, subparser: _SubParsersAction):
     parser = subparser.add_parser(name, help=metadata.help)
 
-    argument: ParserFlag | ParserArgument
+    argument: Flag | Argument
     for argument in [*metadata.arguments, *metadata.flags]:
         match argument.type:
             case "bool":
@@ -42,7 +43,7 @@ def parser_from_metadata(
                 "choices": argument.choices,
             }
 
-        if isinstance(argument, ParserArgument):
+        if isinstance(argument, Argument):
             names = [argument.name]
             if not argument.required and argument.nargs != "*":
                 extra_args["nargs"] = "?"
@@ -60,7 +61,7 @@ def parser_from_metadata(
 def extract_metadata(filepath: str | Path):
     filepath = Path(filepath)
     if filepath.is_dir():
-        return ParserConfig(help=f"{filepath.stem} help")
+        return Metadata(help=f"{filepath.stem} help")
 
     with open(filepath, "r") as f:
         content = f.read()
@@ -74,13 +75,16 @@ def extract_metadata(filepath: str | Path):
     )
 
     if not match:
-        return ParserConfig(help=f"{filepath.stem} help")
+        return Metadata(help=f"{filepath.stem} help")
 
-    return ParserConfig(**yaml.safe_load(match))
+    try:
+        return from_dict(Metadata, yaml.safe_load(match))
+    except WrongTypeError as e:
+        raise ParseException(str(e), str(filepath))
 
 
 def build_argparser(
-    command_tree: ParserCommandTreeNode,
+    command_tree: CommandTreeNode,
     metadata_dict: Optional[MetadataDict] = None,
 ) -> tuple[ArgumentParser, MetadataDict, ParserDict]:
     argparse_dict = {}
@@ -89,8 +93,8 @@ def build_argparser(
         metadata_dict = {}
 
     pending_nodes = [command_tree]
-    visited_nodes: list[ParserCommandTreeNode] = []
-    node_history: list[ParserCommandTreeNode] = []
+    visited_nodes: list[CommandTreeNode] = []
+    node_history: list[CommandTreeNode] = []
 
     while pending_nodes:
         node = pending_nodes[-1]
@@ -160,9 +164,7 @@ def build_argparser(
 def build_command_tree(roots: list[str], command_name: str):
     excluded_folders = ["__pycache__"]
 
-    root_node = ParserCommandTreeNode(
-        name=command_name, subcommands=[], path=Path(), mtime=0
-    )
+    root_node = CommandTreeNode(name=command_name, subcommands=[], path=Path(), mtime=0)
     current_node = [root_node]
     for current_folder, dirs, files in chain.from_iterable(
         os.walk(folder, topdown=True) for folder in roots
@@ -175,7 +177,7 @@ def build_command_tree(roots: list[str], command_name: str):
         if str(current_folder) in roots:
             node = root_node
         else:
-            node = ParserCommandTreeNode(
+            node = CommandTreeNode(
                 name=current_folder.name,
                 subcommands=[],
                 path=current_folder,
@@ -185,7 +187,7 @@ def build_command_tree(roots: list[str], command_name: str):
         for file in files:
             filepath = current_folder / file
             node.subcommands.append(
-                ParserCommandTreeNode(
+                CommandTreeNode(
                     name=file.stem,
                     subcommands=[],
                     path=filepath,

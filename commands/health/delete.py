@@ -13,7 +13,8 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.package import PackageException, get_packages
+from archdots.package import get_packages
+from archdots.exceptions import PackageException
 from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm

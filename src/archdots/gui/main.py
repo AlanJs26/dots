@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 
 from PySide6.QtGui import QGuiApplication
@@ -5,8 +6,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtCore import QObject, Slot
 
 from archdots.constants import MODULE_PATH
-from archdots.utils import GuiException
-from pathlib import Path
+from archdots.exceptions import GuiException
 from archdots.gui.content_updaters import (
     update_package_panel,
     update_sidebar,

@@ -1,10 +1,11 @@
 import subprocess
 from abc import abstractmethod
-from archdots.package import get_packages, Package, PackageException
 from typing import Iterable
 from itertools import chain, groupby
+from archdots.exceptions import PackageManagerException, PackageException
+from archdots.package import get_packages, Package
+from archdots.utils import memoize, SingletonMeta
 from archdots.constants import PACKAGES_FOLDER
-from archdots.utils import memoize, SingletonMeta, PackageManagerException
 
 
 class PackageManager(metaclass=SingletonMeta):

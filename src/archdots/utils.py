@@ -3,31 +3,6 @@ from urllib.parse import urlparse
 from decorator import decorator
 
 
-class ParseException(Exception):
-    pass
-
-
-class GuiException(Exception):
-    pass
-
-
-class PackageException(Exception):
-    def __init__(self, message, pkg_name="") -> None:
-        import re
-
-        if pkg_name:
-            message = f"Exception for '{pkg_name}' package\n{message}"
-        super().__init__(re.sub(r"^\s+", "", message, flags=re.MULTILINE))
-
-
-class PackageManagerException(Exception):
-    pass
-
-
-class SettingsException(Exception):
-    pass
-
-
 class SingletonMeta(type):
     """
     Metaclasse para implementar o padrão Singleton.
@@ -69,7 +44,3 @@ def is_url_valid(url):
         return all([result.scheme, result.netloc])
     except AttributeError:
         return False
-
-
-class CommandException(Exception):
-    pass
