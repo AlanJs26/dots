@@ -4,6 +4,7 @@ from typing import Iterable
 from itertools import chain, groupby
 from archdots.exceptions import PackageManagerException, PackageException
 from archdots.package import get_packages, Package
+from archdots.settings import read_config
 from archdots.utils import memoize, SingletonMeta
 from archdots.constants import PACKAGES_FOLDER
 
@@ -25,7 +26,7 @@ class PackageManager(metaclass=SingletonMeta):
         raise NotImplemented
 
     @abstractmethod
-    def get_installed(self, use_memo=False) -> list[str]:
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         raise NotImplemented
 
 
@@ -167,19 +168,31 @@ class Custom(PackageManager):
         if any(isinstance(pkg, Package) for pkg in target_pkgs):
             return target_pkgs  # type: ignore
         else:
+            filtered_pkgs = list(
+                filter(lambda pkg: pkg.name in target_pkgs, all_packages)
+            )
+            if len(filtered_pkgs) != len(target_pkgs):
+                raise PackageManagerException(
+                    "the following custom packages does not exist. Either create a PKGBUILD or remove them from config.yaml\n"
+                    + "  ".join(
+                        set(target_pkgs).difference(pkg.name for pkg in all_packages)  # type: ignore
+                    ),
+                )
             return list(filter(lambda pkg: pkg.name in target_pkgs, all_packages))
 
     @memoize
-    def get_packages(self, use_memo=False) -> list[Package]:
-        return get_packages(PACKAGES_FOLDER)
+    def get_packages(self, use_memo=False, ignore_platform=False) -> list[Package]:
+        return get_packages(PACKAGES_FOLDER, ignore_platform)
 
     @memoize
-    def get_installed(self, use_memo=False) -> list[str]:
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         custom_packages = self.get_packages()
 
         return [pkg.name for pkg in custom_packages if pkg.check(supress_output=True)]
 
     def install(self, packages: list[str] | list[Package]) -> bool:
+        if not packages:
+            return True
         all_packages = self.get_packages()
         filtered_packages = self._filter_custom_packages(packages, all_packages)
 
@@ -189,12 +202,12 @@ class Custom(PackageManager):
 
         for pm in ext_dependencies_by_pm:
             # filter out dependencies that are already installed
-            deps = list(
-                set(ext_dependencies_by_pm[pm]).difference(set(pm.get_installed()))
+            deps = set(ext_dependencies_by_pm[pm]).difference(
+                pm.get_installed(by_user=False)
             )
             if not deps:
                 continue
-            pm.install(deps)
+            pm.install(list(deps))
 
         for package in sorted_packages:
             package.install()
@@ -202,6 +215,10 @@ class Custom(PackageManager):
         return True
 
     def uninstall(self, packages: list[str] | list[Package]) -> bool:
+        if not packages:
+            return True
+        config = read_config()
+
         all_packages = self.get_packages()
         filtered_packages = self._filter_custom_packages(packages, all_packages)
 
@@ -209,19 +226,23 @@ class Custom(PackageManager):
             filtered_packages, all_packages
         )
 
+        error_happened = False
         for pm in ext_dependencies_by_pm:
-            # filter out dependencies that are already installed
+            # only try to remove installed dependencies
             deps = list(
-                set(ext_dependencies_by_pm[pm]).difference(set(pm.get_installed()))
+                set(ext_dependencies_by_pm[pm]).intersection(pm.get_installed())
             )
+            if "pkgs" in config and pm.name in config["pkgs"]:
+                # do not uninstall dependencies that are marked as managed
+                deps = list(set(deps).difference(config["pkgs"][pm.name]))
             if not deps:
                 continue
-            pm.uninstall(deps)
+            error_happened = not pm.uninstall(deps) or error_happened
 
         for package in sorted_packages:
-            package.uninstall()
+            error_happened = not package.uninstall() or error_happened
 
-        return True
+        return not error_happened
 
     def check_packages(self, packages: list[Package]) -> dict[Package, bool]:
         return {package: package.check() for package in packages}
@@ -236,9 +257,9 @@ class Pacman(PackageManager):
         self.aur_helper = aur_helper
 
     @memoize
-    def get_installed(self, use_memo=False) -> list[str]:
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         process = subprocess.Popen(
-            f"{self.aur_helper} -Qe|awk '{{print $1}}'",
+            f"{self.aur_helper} -Q{'e' if by_user else ''}|awk '{{print $1}}'",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
@@ -253,6 +274,8 @@ class Pacman(PackageManager):
         return [line.strip() for line in process.stdout.readlines()]
 
     def install(self, packages: list[str]) -> bool:
+        if not packages:
+            return True
         process = subprocess.Popen(
             f"{self.aur_helper} -Sy {' '.join(packages)}", shell=True
         )
@@ -260,6 +283,8 @@ class Pacman(PackageManager):
         return process.returncode == 0
 
     def uninstall(self, packages: list[str]) -> bool:
+        if not packages:
+            return True
         process = subprocess.Popen(
             f"{self.aur_helper} -R {' '.join(packages)}", shell=True
         )
@@ -272,7 +297,9 @@ class Pacman(PackageManager):
         return which(self.aur_helper.split()[-1]) is not None
 
 
-package_managers: list[PackageManager] = [Pacman(), Custom()]
+package_managers: list[PackageManager] = list(
+    filter(lambda pm: pm.is_available(), [Pacman(), Custom()])
+)
 
 
 def check_packages(packages: list[str], use_memo=False) -> dict[str, bool]:

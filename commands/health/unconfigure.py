@@ -1,12 +1,12 @@
 """
 ARCHDOTS
-help: configure health scripts
+help: unconfigure health scripts
 arguments:
   - name: name
     required: false
     type: str
     nargs: "*"
-    help: script to configure
+    help: script to unconfigure
 ARCHDOTS
 """
 
@@ -21,13 +21,13 @@ from archdots.constants import HEALTH_FOLDER
 
 
 all_packages = [
-    pkg for pkg in get_packages(HEALTH_FOLDER) if not pkg.check(supress_output=True)
+    pkg for pkg in get_packages(HEALTH_FOLDER) if pkg.check(supress_output=True)
 ]
 
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
 
 if not all_packages:
-    print("there are any health scripts unconfigured")
+    print("there are any health scripts configured")
     exit()
 
 if args["name"]:
@@ -37,7 +37,7 @@ if args["name"]:
             exit()
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
-    print("[cyan]:: [/]Choose health scripts to configure")
+    print("[cyan]:: [/]Choose health scripts to unconfigure")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages],
@@ -56,6 +56,6 @@ else:
     ]
 
 for pkg in selected_packages:
-    print(f'[cyan]:: [/]configuring "{pkg.name}"')
-    if not pkg.install():
-        print(f'[red]:: [/] Failed to configure "{pkg.name}')
+    print(f'[cyan]:: [/]Unconfiguring "{pkg.name}"')
+    if not pkg.uninstall():
+        print(f'[red]:: [/] Failed to unconfigure "{pkg.name}')

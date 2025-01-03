@@ -8,7 +8,6 @@ source = { virtual = "." }
 dependencies = [
     { name = "argparse" },
     { name = "dacite" },
-    { name = "decorator" },
     { name = "plyer" },
     { name = "psutil" },
     { name = "pyside6" },
@@ -21,7 +20,6 @@ dependencies = [
 requires-dist = [
     { name = "argparse", specifier = ">=1.4.0" },
     { name = "dacite", specifier = ">=1.8.1" },
-    { name = "decorator", specifier = ">=5.1.1" },
     { name = "plyer", specifier = ">=2.1.0" },
     { name = "psutil", specifier = ">=6.1.1" },
     { name = "pyside6", specifier = "==6.8.1" },
@@ -45,15 +43,6 @@ version = "1.8.1"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/21/0f/cf0943f4f55f0fbc7c6bd60caf1343061dff818b02af5a0d444e473bb78d/dacite-1.8.1-py3-none-any.whl", hash = "sha256:cc31ad6fdea1f49962ea42db9421772afe01ac5442380d9a99fcf3d188c61afe", size = 14309 },
-]
-
-[[package]]
-name = "decorator"
-version = "5.1.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/66/0c/8d907af351aa16b42caae42f9d6aa37b900c67308052d10fdce809f8d952/decorator-5.1.1.tar.gz", hash = "sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330", size = 35016 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/50/83c593b07763e1161326b3b8c6686f0f4b0f24d5526546bee538c89837d6/decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186", size = 9073 },
 ]
 
 [[package]]

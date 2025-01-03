@@ -12,7 +12,7 @@ import itertools
 import tty, termios, sys
 from typing import NamedTuple, TypeVar
 
-from archdots.package_manager import PackageManager, package_managers
+from archdots.package_manager import Custom, PackageManager, package_managers
 from archdots.settings import read_config, save_config
 
 from rich.live import Live
@@ -20,6 +20,10 @@ from rich.table import Table
 from rich.console import Group
 from rich.panel import Panel
 from rich import print
+from rich.console import Console
+from rich.prompt import Confirm
+
+warning_console = Console(style="yellow italic", stderr=True)
 
 VISIBLE_ROWS = 10
 
@@ -104,6 +108,25 @@ rows: list[Row] = []
 for pm, packages in unmanaged_packages.items():
     for package in packages:
         rows.append(Row(pm, package, Status.UNREVIEWED))
+
+lost_packages = set(pkg.name for pkg in Custom().get_packages(True)).difference(
+    Custom().get_installed(True)
+)
+if "custom" in config["pkgs"]:
+    lost_packages = lost_packages.difference(config["pkgs"]["custom"])
+
+if not rows:
+    if lost_packages:
+        warning_console.print(
+            "Found packages that have been configured but aren't installed neither listed in config.yaml",
+            "To remove this warning, delete those packages or add them to config.yaml\n",
+            f'packages: {", ".join(lost_packages)}',
+            sep="\n",
+        )
+    else:
+        print("nothing to review")
+
+    exit()
 
 
 def generate_table(rows: list[Row], index=0, visible_rows=-1) -> Table:
@@ -199,22 +222,42 @@ with Live(
         group.renderables[0] = generate_table(rows, row_index, VISIBLE_ROWS)
 
 
+error_happened = False
 packages_to_uninstall = list(filter(lambda row: row.status == Status.UNINSTALLED, rows))
-for pm_name, grouped_rows in itertools.groupby(
-    packages_to_uninstall, lambda row: row.pm
-):
-    pass
-    pkgs = [row.pkg for row in grouped_rows]
-    pm_by_name[pm_name].uninstall(pkgs)
+
+if packages_to_uninstall:
+    print(
+        f'[cyan]::[/] about to uninstall the following packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_uninstall)}'
+    )
+    if Confirm.ask("[cyan]::[/] Proceed?", default=True):
+        for pm_name, grouped_rows in itertools.groupby(
+            packages_to_uninstall, lambda row: row.pm
+        ):
+            pkgs = [row.pkg for row in grouped_rows]
+            error_happened = not pm_by_name[pm_name].uninstall(pkgs) or error_happened
 
 packages_to_add = list(filter(lambda row: row.status == Status.ADDED, rows))
 for pm_name, grouped_rows in itertools.groupby(packages_to_add, lambda row: row.pm):
     pkgs = [row.pkg for row in grouped_rows]
     config["pkgs"][pm_name].extend(pkgs)
 
-save_config(config)
+    save_config(config)
 
 if packages_to_uninstall:
     print(f"[red]{len(packages_to_uninstall)} packages uninstalled")
 if packages_to_add:
     print(f"[green]{len(packages_to_add)} packages added")
+
+if error_happened:
+    warning_console.print(
+        f"\nSome packages exited with error on removal. Possibly the numbers above are not valid"
+    )
+
+
+if lost_packages:
+    warning_console.print(
+        "\nFound packages that have been configured but aren't installed neither listed in config.yaml",
+        "To remove this warning, delete those packages or add them to config.yaml\n",
+        f'packages: {", ".join(lost_packages)}',
+        sep="\n",
+    )

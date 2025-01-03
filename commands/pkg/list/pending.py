@@ -1,6 +1,6 @@
 """
 ARCHDOTS
-help: list pending packages
+help: packages in config.yaml that aren't installed
 flags:
     - long: --filter
       type: str

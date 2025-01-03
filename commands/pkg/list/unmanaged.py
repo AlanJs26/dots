@@ -1,6 +1,6 @@
 """
 ARCHDOTS
-help: list unmanaged packages
+help: installed packages that aren't in config.yaml
 flags:
     - long: --filter
       type: str

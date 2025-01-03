@@ -87,7 +87,10 @@ source=({' '.join(f"'{source}'" for source in pkg_sources)})
 # platform='linux'
 
 # All items of source will be downloaded and extracted (when necessary)
-# This script is ran inside a folder over ~/.cache/archdots/pkgname, where all sources are downloaded
+# all downloaded (or extracted folders) are stored inside ${{sourced[@]}}
+# This script runs inside a folder over ~/.cache/archdots/pkgname, where all sources are downloaded
+#
+# $PKGPATH has the path to folder containing this file 
 
 # This function install the package on the system
 install() {{
@@ -110,5 +113,16 @@ os.makedirs(Path(PACKAGES_FOLDER) / pkg_name, exist_ok=True)
 with open(Path(PACKAGES_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
     f.write(new_pkgbuild.strip())
 
-if Confirm.ask("Open PKGBUILD on default $EDITOR?", default=False):  # type: ignore
+if Confirm.ask(f"Add {pkg_name} as a managed package?", default=True):  # type: ignore
+    from archdots.settings import read_config, save_config
+
+    config = read_config()
+    if "pkgs" not in config:
+        config["pkgs"] = {}
+    if "custom" not in config["pkgs"]:
+        config["pkgs"]["custom"] = []
+    config["pkgs"]["custom"].append(pkg_name)
+    save_config(config)
+
+if Confirm.ask("Open PKGBUILD on default $EDITOR?", default=True):  # type: ignore
     os.system(f'$EDITOR "{Path(PACKAGES_FOLDER) / pkg_name / 'PKGBUILD'}"')

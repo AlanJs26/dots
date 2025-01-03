@@ -24,17 +24,15 @@ class Package:
             raise PackageException("all packages must have a name and description")
         if not all(":" in dep for dep in self.depends):
             raise PackageException(
-                "all dependencies in must have a package manager specifier"
+                "all dependencies in must have a package manager specifier", self
             )
         if ":" in self.name:
-            raise PackageException(": are not allowed in package names")
+            raise PackageException(": are not allowed in package names", self)
 
         if self.url and not is_url_valid(self.url):
-            raise PackageException(f'url "{self.url}" is bad formated')
+            raise PackageException(f'url "{self.url}" is bad formated', self)
         if not all(is_url_valid(source) for source in self.source):
-            raise PackageException(f"invalid source(s)")
-        if not os.path.isfile(self.pkgbuild):
-            raise PackageException(f"pkgbuild must be a valid file")
+            raise PackageException(f"invalid source(s)", self)
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -43,24 +41,89 @@ class Package:
         """
         download and extract (when needed) all sources in CACHE_FOLDER/self.name
         """
+        from urllib.request import urlretrieve
+
+        sourced_folders: list[str] = []
+
         os.makedirs(self.get_cache_folder(), exist_ok=True)
         for source in self.source:
+            if not is_url_valid(source):
+                raise PackageException(f"{source} is not a valid url", self)
+
+            # download github directories as zip
+            github_regex = re.compile(
+                r"(https?:\/\/)?github\.com\/(?P<user>[^\/]+?)\/(?P<repo>[^\/]+?)\/?$"
+            )
+            if match := re.match(github_regex, source):
+                source = f'https://api.github.com/repos/{match.group("user")}/{match.group("repo")}/zipball'
+
+            # path to source inside cache folder
             downloaded_file = os.path.join(
                 self.get_cache_folder(), os.path.basename(source)
             )
-            os.system(f'wget "{source}" -P "{self.get_cache_folder()}"')
-            if source.endswith(".tar.gz"):
-                os.system(
-                    f'tar -xvf "{downloaded_file}" -C "{self.get_cache_folder()}"'
-                )
-                os.system(f'rm "{downloaded_file}"')
-            elif source.endswith(".zip"):
-                os.system(f'unzip "{downloaded_file}" -d "{self.get_cache_folder()}"')
-                os.system(f'rm "{downloaded_file}"')
+            sourced = downloaded_file
 
-    def _run_pkgbuild_function(self, name, supress_output=False):
+            # download source inside cache folder
+            urlretrieve(source, downloaded_file)
+
+            # extract source when needed
+            if source.endswith(".tar.gz"):
+                import tarfile
+
+                with tarfile.open(downloaded_file) as f:
+                    if not (files := f.getnames()):
+                        raise PackageException(
+                            f'Could not extract tar file "{downloaded_file}". Tar file is empty',
+                            self,
+                        )
+                    tar_root = files[0]
+                    if all(f.startswith(tar_root) for f in files):
+                        sourced = os.path.join(self.get_cache_folder(), tar_root)
+                        f.extractall(self.get_cache_folder(), filter="data")
+                    else:
+                        sourced = os.path.splitext(downloaded_file)[0]
+                        os.makedirs(sourced, exist_ok=True)
+                        f.extractall(sourced, filter="data")
+
+                os.remove(downloaded_file)
+            elif source.endswith(".zip") or source.endswith("zipball"):
+                from zipfile import ZipFile
+
+                with ZipFile(downloaded_file) as f:
+                    if not (files := f.namelist()):
+                        raise PackageException(
+                            f'Could not extract tar file "{downloaded_file}". Tar file is empty',
+                            self,
+                        )
+                    zip_root = files[0]
+                    if all(f.startswith(zip_root) for f in files):
+                        sourced = os.path.join(self.get_cache_folder(), zip_root)
+                        f.extractall(self.get_cache_folder())
+                    else:
+                        sourced = os.path.splitext(downloaded_file)[0]
+                        os.makedirs(sourced, exist_ok=True)
+                        f.extractall(sourced)
+
+                os.remove(downloaded_file)
+
+            sourced_folders.append(sourced)
+
+        return sourced_folders
+
+    def _run_pkgbuild_function(
+        self, name, supress_output=False, sources: list[str] = []
+    ):
         os.makedirs(self.get_cache_folder(), exist_ok=True)
+
+        bashdict = ""
+        if sources:
+            for i, folder in enumerate(sources):
+                bashdict += f'["{i}"]="{folder}" '
+            bashdict = "declare -A sourced=(" + bashdict.strip() + ")"
+
         command = f"""
+        PKGPATH="{os.path.dirname(self.pkgbuild)}"
+        {bashdict}
         source {os.path.abspath(self.pkgbuild)}
         {name}
         """
@@ -78,27 +141,55 @@ class Package:
         return int(process.returncode)
 
     def check(self, supress_output=False):
+        from rich import print
+
+        if not supress_output:
+            print(f"[cyan]::[/] Checking")
         return self._run_pkgbuild_function("check", supress_output) == 0
 
     def update(self, supress_output=False):
+        from rich import print
+
+        if not supress_output:
+            print(f"[cyan]::[/] Updating [cyan]{self.name}")
         if self.check(supress_output) and "install" not in self.available_functions:
-            print("already installed")
+            print(f"[yellow]::[/] {self.name} Already installed")
             return
-        return self._run_pkgbuild_function("update", supress_output) == 0
+        sources = self.fetch_sources()
+        status = self._run_pkgbuild_function("update", supress_output, sources) == 0
+        if status:
+            print(f"[green]::[/] Successfully updated [cyan]{self.name}")
+        return status
 
     def install(self, supress_output=False):
+        from rich import print
+
+        if not supress_output:
+            print(f"[cyan]::[/] Installing [cyan]{self.name}")
         if self.check(supress_output):
-            print("already installed")
+            print(f"[yellow]::[/] {self.name} Already installed")
             return
 
-        return self._run_pkgbuild_function("install", supress_output) == 0
+        sources = self.fetch_sources()
+        status = self._run_pkgbuild_function("install", supress_output, sources) == 0
+        if status:
+            print(f"[green]::[/] Successfully installed [cyan]{self.name}")
+        return status
 
     def uninstall(self, supress_output=False):
+        from rich import print
+
+        if not supress_output:
+            print(f"[cyan]::[/] Uninstalling [cyan]{self.name}")
+
         if not self.check(supress_output):
-            print("not installed. Cannot uninstall")
+            print(f"[red]::[/] {self.name} is not installed. Cannot uninstall")
             return
 
-        return self._run_pkgbuild_function("uninstall", supress_output) == 0
+        status = self._run_pkgbuild_function("uninstall", supress_output) == 0
+        if status:
+            print(f"[green]::[/] Successfully uninstalled [cyan]{self.name}")
+        return status
 
     def get_cache_folder(self):
         return os.path.join(CACHE_FOLDER, self.name)
@@ -156,7 +247,11 @@ def package_from_path(folder_path) -> Package:
         text=True,
     )
     if not process.stdout:
-        raise PackageException("could not read PKGBUILD", pkg_name)
+        raise PackageException(
+            "could not read PKGBUILD",
+            pkg_name=pkg_name,
+            pkgbuild=folder_path + "/PKGBUILD",
+        )
 
     vars_text, func_text, *_ = process.stdout.read().split("===")
 
@@ -176,14 +271,22 @@ def package_from_path(folder_path) -> Package:
 
     missing_fields = list(set(known_fields).difference(fields_dict.keys()))
     if missing_fields:
-        raise PackageException(f"missing fields: {missing_fields}", pkg_name)
+        raise PackageException(
+            f"missing fields: {missing_fields}",
+            pkg_name=pkg_name,
+            pkgbuild=folder_path + "/PKGBUILD",
+        )
 
     # filter out empty strings
     funcs = list(filter(str, func_text.splitlines()))
 
     missing_funcs = list(set(known_funcs).difference(funcs))
     if missing_funcs:
-        raise PackageException(f"missing functions: {missing_funcs}", pkg_name)
+        raise PackageException(
+            f"missing functions: {missing_funcs}",
+            pkg_name=pkg_name,
+            pkgbuild=folder_path + "/PKGBUILD",
+        )
 
     fields_dict["depends"] = [
         ("custom:" + dep if ":" not in dep else dep) for dep in fields_dict["depends"]
@@ -193,7 +296,11 @@ def package_from_path(folder_path) -> Package:
         "linux",
         "windows",
     ]:
-        raise PackageException(f'invalid platform: {fields_dict["platform"]}', pkg_name)
+        raise PackageException(
+            f'invalid platform: {fields_dict["platform"]}',
+            pkg_name=pkg_name,
+            pkgbuild=folder_path + "/PKGBUILD",
+        )
 
     return Package(
         name=os.path.basename(folder_path),

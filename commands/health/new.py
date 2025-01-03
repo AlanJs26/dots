@@ -66,7 +66,7 @@ new_pkg = Package(
 are_custom_packages_valid([*all_packages, new_pkg])
 
 new_pkgbuild = f'''
-description='{pkg_description.replace("'", "\\'")}'
+description='{pkg_description.replace("'", "'\"'\"'")}'
 url=''
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=()
@@ -74,7 +74,10 @@ source=()
 # platform='linux'
 
 # All items of source will be downloaded and extracted (when necessary)
+# all downloaded (or extracted folders) are stored inside ${{sourced[@]}}
 # This script is ran inside a folder over ~/.cache/archdots/pkgname, where all sources are downloaded
+#
+# $PKGPATH has the path to folder containing this file 
 
 # This function is used to configure the health script
 install() {{
@@ -97,5 +100,5 @@ os.makedirs(Path(HEALTH_FOLDER) / pkg_name, exist_ok=True)
 with open(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
     f.write(new_pkgbuild.strip())
 
-if Confirm.ask("Open PKGBUILD on default $EDITOR?", default=False):  # type: ignore
+if Confirm.ask("Open PKGBUILD on default $EDITOR?", default=True):  # type: ignore
     os.system(f'$EDITOR "{Path(HEALTH_FOLDER) / pkg_name / 'PKGBUILD'}"')

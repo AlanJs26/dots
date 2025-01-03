@@ -1,6 +1,6 @@
 """
 ARCHDOTS
-help: list installed packages
+help: installed (and managed) packages
 flags:
     - long: --filter
       type: str

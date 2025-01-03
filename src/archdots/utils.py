@@ -1,41 +1,54 @@
-from typing import Callable
+from typing import TypeVar, ParamSpec
+from collections.abc import Callable
 from urllib.parse import urlparse
-from decorator import decorator
+import inspect
+
+import functools
 
 
 class SingletonMeta(type):
-    """
-    Metaclasse para implementar o padrão Singleton.
-    """
-
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
-            # Cria a instância e armazena no dicionário
             cls._instances[cls] = super().__call__(*args, **kwargs)
         return cls._instances[cls]
 
 
 _memo = {}
 
+T = TypeVar("T")  # function return value
+P = ParamSpec("P")  # function parameters
 
-@decorator
-def memoize(f: Callable, *args, **kwargs):
-    global _memo
-    if not len(args) or not isinstance(args[-1], bool):
-        raise ValueError(
-            "memoize expect the last argument to be a boolean, i.e. use_memo"
-        )
-    use_memo = args[-1]
-    if f not in _memo:
-        _memo[f] = {}
 
-    if use_memo and args in _memo[f]:
-        return _memo[f][args]
-    else:
-        _memo[f][args] = f(*args, **kwargs)
-        return _memo[f][args]
+def memoize(f: Callable[P, T]) -> Callable[P, T]:
+
+    @functools.wraps(f)
+    def wrapper(*args: P.args, **kwargs: P.kwargs):
+        global _memo
+
+        # Retrieve default arguments from original function
+        signature = inspect.signature(f)
+        bound_args = signature.bind(*args, **kwargs)
+        bound_args.apply_defaults()  # apply default values
+
+        use_memo = bound_args.arguments.get("use_memo")
+
+        if use_memo is None or not isinstance(use_memo, bool):
+            raise ValueError(
+                "memoize expect the last argument to be a boolean, i.e. use_memo"
+            )
+
+        if f not in _memo:
+            _memo[f] = {}
+
+        if use_memo and args in _memo[f]:
+            return _memo[f][args]
+        else:
+            _memo[f][args] = f(*args, **kwargs)
+            return _memo[f][args]
+
+    return wrapper
 
 
 def is_url_valid(url):
