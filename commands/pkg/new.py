@@ -1,6 +1,6 @@
 """
 ARCHDOTS
-help: create a new health script
+help: create a new custom package
 ARCHDOTS
 """
 
