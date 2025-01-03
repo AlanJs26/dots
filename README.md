@@ -2,7 +2,6 @@
 
 > Manage your dotfiles and packages in one place
 
----
 
 Archdots is a command-line application designed to help you back up and maintain your system configuration inside a GitHub repository.
 
@@ -10,7 +9,6 @@ Once everything is set up, simply run `dots sync`, and all files and packages wi
 
 In addition, all CLI commands are crafted to be easily extensible, allowing you to tweak the tool for your specific needs.
 
----
 
 ## ✨ Features
 
@@ -26,7 +24,6 @@ With a syntax inspired by Arch Linux's package declaration, you can create scrip
 
 Any script placed in the `commands` folder will automatically become available in the CLI, consolidating all your bash/python scripts in one place.
 
----
 
 ## 🛠️ Installation
 
@@ -43,13 +40,10 @@ $ pip install .
 Archdots uses **chezmoi** to manage dotfiles.  
 To install chezmoi, follow the instructions on their [installation page](https://www.chezmoi.io/install/#one-line-package-install).
 
----
-
 ## 📚 How to Use
 
 > For a detailed guide on all commands, check out our [GitHub Wiki](https://github.com/AlanJs26/dots).
 
----
 
 ### 🗂️ Files
 
@@ -93,7 +87,6 @@ To set up a new machine, follow the instructions in the [chezmoi guide](https://
 $ chezmoi init --apply https://github.com/$GITHUB_USERNAME/dotfiles.git  
 ```
 
----
 
 ### 📦 Packages
 
@@ -139,7 +132,6 @@ $ dots pkg new
 
 > For more information on the syntax of custom packages, see the [wiki](https://github.com/AlanJs26/dots).
 
----
 
 ## 🔧 Extending
 
@@ -179,7 +171,6 @@ ARCHDOTS
 
 Contributions are always welcome—whether it's reporting issues, suggesting features, or submitting fixes!
 
----
 
 ## 🏆 Credits
 
@@ -189,7 +180,6 @@ Archdots is inspired by:
 - [pacdef](https://github.com/steven-omaha/pacdef) – Managing packages declaratively on Linux.
 - [bashly](https://bashly.dannyb.co/) – Building custom CLIs can be simple and enjoyable.
 
----
 
 ## 🛣️ Roadmap
 
