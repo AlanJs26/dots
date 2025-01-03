@@ -10,7 +10,8 @@ args = args  # type: ignore
 from enum import Enum
 import itertools
 import tty, termios, sys
-from typing import NamedTuple, TypeVar
+from typing import NamedTuple
+from math import ceil
 
 from archdots.package_manager import Custom, PackageManager, package_managers
 from archdots.settings import read_config, save_config
@@ -28,10 +29,7 @@ warning_console = Console(style="yellow italic", stderr=True)
 VISIBLE_ROWS = 10
 
 
-T = TypeVar("T")
-
-
-def window(seq: list[T], n: int, window_size: int) -> list[T]:
+def window[T](seq: list[T], n: int, window_size: int) -> list[T]:
     "Returns a sliding window (of width n) over data from the iterable"
     "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
     return seq[n : n + window_size]
@@ -108,6 +106,7 @@ rows: list[Row] = []
 for pm, packages in unmanaged_packages.items():
     for package in packages:
         rows.append(Row(pm, package, Status.UNREVIEWED))
+rows.sort(key=lambda r: r.pkg)
 
 lost_packages = set(pkg.name for pkg in Custom().get_packages(True)).difference(
     Custom().get_installed(True)
@@ -135,18 +134,18 @@ def generate_table(rows: list[Row], index=0, visible_rows=-1) -> Table:
     table.add_column()
     table.add_column()
 
-    if visible_rows <= 0:
+    if visible_rows <= 0 or len(rows) < VISIBLE_ROWS:
         visible_rows = len(rows)
 
     focused_index = index
-    if index < visible_rows // 2:
+    if index < ceil(visible_rows / 2):
         index = 0
-    elif index > len(rows) - visible_rows // 2:
+    elif index > len(rows) - ceil(visible_rows / 2):
         focused_index = index - (len(rows) - visible_rows)
         index = len(rows) - visible_rows
     else:
-        index = index - visible_rows // 2
-        focused_index = visible_rows // 2
+        index = index - ceil(visible_rows / 2)
+        focused_index = ceil(visible_rows / 2)
 
     for i, row in enumerate(window(rows, index, visible_rows)):
         pm, package, status = row
@@ -210,7 +209,7 @@ with Live(
                 group.renderables[0] = generate_table(rows, row_index, VISIBLE_ROWS)
                 continue
             case Decision.QUIT:
-                break
+                exit()
             case Decision.INVALID:
                 if row.status == Status.UNREVIEWED:
                     continue

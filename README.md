@@ -53,6 +53,8 @@ To install chezmoi, follow the instructions on their [installation page](https:/
 
 ### 🗂️ Files
 
+![review command](./.vhs/file.gif)
+
 #### Initialize chezmoi
 
 Before using `archdots`, initialize chezmoi as described in their [Quick Start guide](https://www.chezmoi.io/quick-start/):
@@ -95,6 +97,8 @@ $ chezmoi init --apply https://github.com/$GITHUB_USERNAME/dotfiles.git
 
 ### 📦 Packages
 
+![review command](./.vhs/review.gif)
+
 Packages can be in one of four states:
 
 |**State**|**Installed**|**Present in `config.yaml`**|
@@ -115,6 +119,7 @@ Handle unmanaged packages by either deleting them or adding them to `config.yaml
 ```bash
 $ dots pkg review  
 ```
+
 
 #### Pending Packages
 

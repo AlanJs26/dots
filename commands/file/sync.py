@@ -43,8 +43,8 @@ with Progress() as progress:
     progress.update(task, completed=1, total=1)
 
     def chezmoi_add_thread(task: TaskID, file: str):
-        run_and_wait(f'chezmoi add "{os.path.expanduser(file)}"')
         progress.update(task, advance=1, description=file)
+        run_and_wait(f'chezmoi add "{os.path.expanduser(file)}"')
 
     if "chezmoi" in config and isinstance(config["chezmoi"], list):
         task = progress.add_task("adding git files", total=len(config["chezmoi"]))
