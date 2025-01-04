@@ -227,10 +227,16 @@ class Custom(PackageManager):
         )
 
         error_happened = False
+
+        for package in sorted_packages:
+            error_happened = not package.uninstall() or error_happened
+
         for pm in ext_dependencies_by_pm:
             # only try to remove installed dependencies
             deps = list(
-                set(ext_dependencies_by_pm[pm]).intersection(pm.get_installed())
+                set(ext_dependencies_by_pm[pm]).intersection(
+                    pm.get_installed(by_user=False)
+                )
             )
             if "pkgs" in config and pm.name in config["pkgs"]:
                 # do not uninstall dependencies that are marked as managed
@@ -238,9 +244,6 @@ class Custom(PackageManager):
             if not deps:
                 continue
             error_happened = not pm.uninstall(deps) or error_happened
-
-        for package in sorted_packages:
-            error_happened = not package.uninstall() or error_happened
 
         return not error_happened
 
@@ -271,7 +274,11 @@ class Pacman(PackageManager):
                 print(process.stderr.read())
             raise PackageManagerException("could not run 'pacman -Qe'")
 
-        return [line.strip() for line in process.stdout.readlines()]
+        installed = [line.strip() for line in process.stdout.readlines()]
+        custom_packages_names = [
+            pkg.name for pkg in Custom().get_packages(use_memo=use_memo)
+        ]
+        return list(filter(lambda p: p not in custom_packages_names, installed))
 
     def install(self, packages: list[str]) -> bool:
         if not packages:

@@ -67,7 +67,13 @@ class Package:
             urlretrieve(source, downloaded_file)
 
             # extract source when needed
-            if source.endswith(".tar.gz"):
+            if source.endswith(".git"):
+                basename = downloaded_file.split(".")[0]
+                folder_path = os.path.join(self.get_cache_folder(), basename)
+
+                os.system(f'git clone "{source}" "{folder_path}"')
+                sourced = folder_path
+            elif source.endswith(".tar.gz"):
                 import tarfile
 
                 with tarfile.open(downloaded_file) as f:
@@ -201,9 +207,10 @@ def get_packages(folder: str, ignore_platform=False) -> list[Package]:
     """
 
     filtered_packages = []
-    for root, _, files in os.walk(folder, topdown=True):
+    for root, dirs, files in os.walk(folder, topdown=True):
         if "PKGBUILD" not in files:
             continue
+        dirs[:] = []
         filtered_packages.append(root)
 
     packages = [package_from_path(pkgbuild_path) for pkgbuild_path in filtered_packages]

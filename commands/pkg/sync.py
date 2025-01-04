@@ -12,6 +12,7 @@ from rich import print
 from archdots.constants import MODULE_PATH
 from archdots.package_manager import PackageManager, package_managers, Custom
 from archdots.settings import read_config
+from rich.console import Console
 from rich.prompt import Confirm
 import importlib.util
 from pathlib import Path
@@ -23,17 +24,35 @@ if "pkgs" not in config:
     print("there is no pkgs configured", file=sys.stderr)
     exit()
 
-packages_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
+warning_console = Console(style="yellow italic", stderr=True)
+
+packages_by_pm: dict[str, list[str]] = {
+    pm.name: pm.get_installed() for pm in package_managers
+}
 pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
+
+custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
 
 pending_packages: dict[str, list[str]] = {}
 flatten_pending_packages: list[str] = []
+all_obscured_packages: list[str] = []
 for pm in packages_by_pm:
     if pm not in config["pkgs"]:
         continue
-    pending_packages[pm] = list(set(config["pkgs"][pm]) - set(packages_by_pm[pm]))
+    overwritten_packages = set()
+    if pm != Custom().name:
+        overwritten_packages = set(custom_pkg_names).intersection(config["pkgs"][pm])
+        all_obscured_packages.extend(f"{pm}:{pkg}" for pkg in overwritten_packages)
+
+    pending_packages[pm] = list(
+        set(config["pkgs"][pm]) - set(packages_by_pm[pm]) - overwritten_packages
+    )
     flatten_pending_packages.extend(f"{pm}:{pkg}" for pkg in pending_packages[pm])
 
+if all_obscured_packages:
+    warning_console.print(
+        f'the packages {", ".join(all_obscured_packages)} were obscured by custom packages with same name. Consider removing them from your config'
+    )
 
 if any(pkgs for pkgs in pending_packages.values()):
     print(
@@ -62,9 +81,6 @@ if unmanaged_packages and Confirm.ask(
         module.__dict__["args"] = {}
         spec.loader.exec_module(module)
 else:
-    from rich.console import Console
-
-    warning_console = Console(style="yellow italic", stderr=True)
 
     lost_packages = set(pkg.name for pkg in Custom().get_packages(True)).difference(
         Custom().get_installed(True)
