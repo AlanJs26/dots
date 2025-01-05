@@ -13,7 +13,7 @@ ARCHDOTS
 # for x in "${!args[@]}"; do printf "[%s]=%s\n" "$x" "${args[$x]}"; done
 
 if [ -z "${args[type]}" ] || [ "${args[type]}" = "pkgs" ]; then
-  $ARCHDOTS pkgs sync
+  $ARCHDOTS pkg sync
 fi
 
 if [ -z "${args[type]}" ] || [ "${args[type]}" = "dots" ]; then

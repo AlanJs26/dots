@@ -31,12 +31,13 @@ class PackageManager(metaclass=SingletonMeta):
 
 
 def split_packages_by_pm(packages: list[str]) -> dict[PackageManager, list[str]]:
-    pkgs_by_pm: dict[PackageManager, list[str]] = {
-        next(filter(lambda pm: pm.name == package_manager, package_managers)): [
-            pkg.split(":")[1] for pkg in pkgs
-        ]
-        for package_manager, pkgs in groupby(packages, lambda x: x.split(":")[0])
-    }
+    pkgs_by_pm: dict[PackageManager, list[str]] = {}
+    packages = [name if ":" in name else f"{Custom().name}:{name}" for name in packages]
+
+    for package_manager, pkgs in groupby(packages, lambda name: name.split(":")[0]):
+        pm = next(filter(lambda pm: pm.name == package_manager, package_managers))
+        pkgs_by_pm[pm] = [pkg.split(":")[1] for pkg in pkgs]
+
     return pkgs_by_pm
 
 
@@ -201,6 +202,8 @@ class Custom(PackageManager):
         )
 
         for pm in ext_dependencies_by_pm:
+            if pm.name == "custom":
+                continue
             # filter out dependencies that are already installed
             deps = set(ext_dependencies_by_pm[pm]).difference(
                 pm.get_installed(by_user=False)
@@ -228,10 +231,20 @@ class Custom(PackageManager):
 
         error_happened = False
 
-        for package in sorted_packages:
-            error_happened = not package.uninstall() or error_happened
+        for package in sorted_packages[::-1]:
+            # do not uninstall dependencies that are marked as managed
+            if (
+                "pkgs" in config
+                and "custom" in config["pkgs"]
+                and package.name in config["pkgs"]["custom"]
+                or not package.check(True)
+            ):
+                continue
+            package.uninstall()
 
         for pm in ext_dependencies_by_pm:
+            if pm.name == "custom":
+                continue
             # only try to remove installed dependencies
             deps = list(
                 set(ext_dependencies_by_pm[pm]).intersection(

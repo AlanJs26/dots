@@ -9,6 +9,7 @@ from itertools import chain
 from typing import Any, Optional
 from argparse import _SubParsersAction, ArgumentParser, Namespace
 
+from archdots.constants import MODULE_PATH
 from archdots.exceptions import ParseException
 from archdots.schema import (
     Argument,
@@ -234,7 +235,7 @@ def run_command(args: Namespace, metadata_dict: MetadataDict, parser_dict: Parse
         return
 
     def parse_value(value, no_quotes=False):
-        quotes = lambda x: x if no_quotes else '"' + x + '"'
+        quotes = lambda x: x if no_quotes else f'"{x}"'
 
         if isinstance(value, bool):
             return int(value)
@@ -265,7 +266,7 @@ def run_command(args: Namespace, metadata_dict: MetadataDict, parser_dict: Parse
             bashdict += f'["{key}"]={parse_value(value)} '
         bashdict = "declare -A args=(" + bashdict.strip() + ")"
 
-        command = 'ARCHDOTS="python runner.py"\n'
+        command = f'ARCHDOTS="python {os.path.join(MODULE_PATH, "runner.py")}"\n'
 
         if str(script_path).endswith("sh"):
             command += f"{bashdict}\nsource {str(script_path)}"

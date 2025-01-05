@@ -1,6 +1,15 @@
 """
 ARCHDOTS
 help: sync packages
+flags:
+    - long: --install
+      type: str
+      nargs: +
+      help: try to install package, independently of managed state
+    - long: --uninstall
+      type: str
+      nargs: +
+      help: try to uninstall package, independently of managed state
 ARCHDOTS
 """
 
@@ -10,13 +19,30 @@ args = args  # type: ignore
 import sys
 from rich import print
 from archdots.constants import MODULE_PATH
-from archdots.package_manager import PackageManager, package_managers, Custom
+from archdots.package_manager import (
+    PackageManager,
+    package_managers,
+    Custom,
+    split_packages_by_pm,
+)
 from archdots.settings import read_config
 from rich.console import Console
 from rich.prompt import Confirm
 import importlib.util
 from pathlib import Path
 import os
+
+if args["install"]:
+    pkgs_by_pm = split_packages_by_pm(args["install"])
+    for pm, pkgs in pkgs_by_pm.items():
+        pm.install(pkgs)
+if args["uninstall"]:
+    pkgs_by_pm = split_packages_by_pm(args["install"])
+    for pm, pkgs in pkgs_by_pm.items():
+        pm.uninstall(pkgs)
+
+if args["install"] or args["uninstall"]:
+    exit()
 
 config = read_config()
 
@@ -39,13 +65,13 @@ all_obscured_packages: list[str] = []
 for pm in packages_by_pm:
     if pm not in config["pkgs"]:
         continue
-    overwritten_packages = set()
+    obscured_packages = set()
     if pm != Custom().name:
-        overwritten_packages = set(custom_pkg_names).intersection(config["pkgs"][pm])
-        all_obscured_packages.extend(f"{pm}:{pkg}" for pkg in overwritten_packages)
+        obscured_packages = set(custom_pkg_names).intersection(config["pkgs"][pm])
+        all_obscured_packages.extend(f"{pm}:{pkg}" for pkg in obscured_packages)
 
     pending_packages[pm] = list(
-        set(config["pkgs"][pm]) - set(packages_by_pm[pm]) - overwritten_packages
+        set(config["pkgs"][pm]) - set(packages_by_pm[pm]) - obscured_packages
     )
     flatten_pending_packages.extend(f"{pm}:{pkg}" for pkg in pending_packages[pm])
 

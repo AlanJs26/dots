@@ -47,7 +47,7 @@ with Progress() as progress:
         run_and_wait(f'chezmoi add "{os.path.expanduser(file)}"')
 
     if "chezmoi" in config and isinstance(config["chezmoi"], list):
-        task = progress.add_task("adding git files", total=len(config["chezmoi"]))
+        task = progress.add_task("adding git files", total=len(config["chezmoi"]) + 1)
         with ThreadPoolExecutor(max_workers=4) as pool:
             for file in config["chezmoi"]:
                 pool.submit(chezmoi_add_thread, task, file)

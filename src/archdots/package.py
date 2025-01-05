@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 from typing import Any
 import re
@@ -63,17 +64,21 @@ class Package:
             )
             sourced = downloaded_file
 
-            # download source inside cache folder
-            urlretrieve(source, downloaded_file)
-
-            # extract source when needed
             if source.endswith(".git"):
-                basename = downloaded_file.split(".")[0]
+                basename = downloaded_file.rsplit(".", 1)[0]
                 folder_path = os.path.join(self.get_cache_folder(), basename)
+                if (
+                    os.path.exists(folder_path)
+                    and self.get_cache_folder() in folder_path
+                ):
+                    shutil.rmtree(folder_path)
 
                 os.system(f'git clone "{source}" "{folder_path}"')
                 sourced = folder_path
             elif source.endswith(".tar.gz"):
+                # download source inside cache folder
+                urlretrieve(source, downloaded_file)
+
                 import tarfile
 
                 with tarfile.open(downloaded_file) as f:
@@ -93,6 +98,9 @@ class Package:
 
                 os.remove(downloaded_file)
             elif source.endswith(".zip") or source.endswith("zipball"):
+                # download source inside cache folder
+                urlretrieve(source, downloaded_file)
+
                 from zipfile import ZipFile
 
                 with ZipFile(downloaded_file) as f:
