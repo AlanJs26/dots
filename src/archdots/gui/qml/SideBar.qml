@@ -3,8 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Rectangle {
-  property QtObject backend_instance
-
   property int pendingPackages
   property int unmanagedPackages
 
@@ -21,7 +19,7 @@ Rectangle {
       Layout.alignment: Qt.AlignLeft
       icon.source: "../icons/refresh.png"
       onClicked: { 
-        backend_instance.refresh_packages()
+        backend.refresh_packages()
       }
     }
     IconButton {
@@ -89,8 +87,8 @@ Rectangle {
       Layout.alignment: Qt.AlignHCenter
       model: [ "Gerenciados", "Não Gerenciados", "Pendentes"]
       onActivated: { 
-        backend_instance.update_sidebar()
-        backend_instance.update_package_panel()
+        backend.update_sidebar()
+        backend.update_package_panel()
       }
     }
 
@@ -119,7 +117,7 @@ Rectangle {
           onClicked: { 
             listView.currentIndex = index 
             listView.currentName = modelData.name
-            backend_instance.update_package_panel()
+            backend.update_package_panel()
           }
         }
       }

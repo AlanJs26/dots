@@ -31,7 +31,7 @@ def update_package_panel(window: QObject, use_memo=True):
     pkg_managed = True
     pkg_installed = True
 
-    current_item_name = packages_list.property("currentName")
+    current_item_name: None|str = packages_list.property("currentName")
     if not current_item_name:
         packagePanel.setProperty("pkgInstalled", pkg_installed)
         packagePanel.setProperty("pkgManaged", pkg_managed)
@@ -41,7 +41,7 @@ def update_package_panel(window: QObject, use_memo=True):
         packagePanel.setProperty("pkgTitle", "")
         return
 
-    pkg_name, pm_name = current_item_name.rsplit(" - ")
+    pkg_name, pm_name = current_item_name.rsplit(" - ", 1)
 
     if pm_name == "custom":
         custom_packages: list[Package] = Custom().get_packages()
@@ -104,15 +104,19 @@ def update_packages_list(window: QObject, use_memo=True):
 
 
 def update_sidebar(window: QObject, use_memo=True):
+    pending_packages = get_pending_packages(use_memo)
+    unmanaged_packages = get_unmanaged_packages(use_memo)
+
     update_packages_list(window, use_memo)
+
     pending_packages_number = findChild(window, "pendingPackagesNumber")
     unmanaged_packages_number = findChild(window, "unmanagedPackagesNumber")
 
     pending_packages_number.setProperty(
         "text",
-        reduce(lambda p, n: p + len(n), get_pending_packages(use_memo).values(), 0),
+        reduce(lambda p, n: p + len(n), pending_packages.values(), 0),
     )
     unmanaged_packages_number.setProperty(
         "text",
-        reduce(lambda p, n: p + len(n), get_unmanaged_packages(use_memo).values(), 0),
+        reduce(lambda p, n: p + len(n), unmanaged_packages.values(), 0),
     )

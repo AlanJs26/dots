@@ -8,16 +8,17 @@ Window {
     visible: true
     title: "archdots"
 
-    property QtObject backend
+    id: main
 
     RowLayout {
+        Component.onCompleted: backend.startup(main);
+
         anchors.fill:  parent
         spacing: 30
 
         SideBar {
           pendingPackages: 10
           unmanagedPackages: 10
-          backend_instance: backend
         }
 
         Rectangle {

@@ -12,7 +12,6 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-import sys
 from rich import print
 from archdots.package_manager import package_managers
 from archdots.settings import read_config
@@ -25,8 +24,8 @@ if "pkgs" not in config:
     config["pkgs"] = {}
 
 unmanaged_packages: dict[str, list[str]] = {}
-for pm_name in config["pkgs"]:
-    if pm_name not in installed_pkgs_by_pm:
+for pm_name in installed_pkgs_by_pm.keys():
+    if pm_name not in config['pkgs']:
         config["pkgs"][pm_name] = []
     unmanaged_packages[pm_name] = list(
         set(installed_pkgs_by_pm[pm_name]) - set(config["pkgs"][pm_name])
