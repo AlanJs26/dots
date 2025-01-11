@@ -1,6 +1,6 @@
 import subprocess
 from abc import abstractmethod
-from typing import Iterable
+from typing import Iterable, TypedDict
 from itertools import chain, groupby
 from archdots.exceptions import PackageManagerException, PackageException
 from archdots.package import get_packages, Package
@@ -281,6 +281,7 @@ class Pacman(PackageManager):
             stdin=subprocess.PIPE,
             shell=True,
             text=True,
+            encoding='cp437'
         )
         if not process.stdout:
             if process.stderr:
@@ -316,9 +317,80 @@ class Pacman(PackageManager):
 
         return which(self.aur_helper.split()[-1]) is not None
 
+class WingetResultItem(TypedDict):
+    InstalledVersion: str
+    Name: str
+    Id: str
+    IsUpdateAvailable: bool
+    Source: str|None
+    AvailableVersions: list[str]
+
+class Winget(PackageManager):
+    winget_result: list[WingetResultItem] = []
+    def __init__(self) -> None:
+        super().__init__("winget")
+
+    @memoize
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+        import json 
+
+        process = subprocess.Popen(
+            f'powershell -Command "Get-WinGetPackage -s winget|ConvertTo-Json"',
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            shell=True,
+            text=True,
+            encoding='cp437'
+        )
+        if not process.stdout:
+            if process.stderr:
+                print(process.stderr.read())
+            raise PackageManagerException("could not run 'winget list'")
+
+        self.winget_result = json.loads(process.stdout.read())
+        installed = [result['Name'] for result in self.winget_result]
+        custom_packages_names = [
+            pkg.name for pkg in Custom().get_packages(use_memo=use_memo)
+        ]
+        return list(filter(lambda p: p not in custom_packages_names, installed))
+
+    def install(self, packages: list[str]) -> bool:
+        if not packages:
+            return True
+        from os import system
+
+        id_by_name = {r['Name']: r['Id'] for r in self.winget_result}
+
+        error_happened = False
+        for package in packages:
+            if package in id_by_name:
+                package = id_by_name[package]
+            error_happened = error_happened or system(f'winget install "{package}" --disable-interactivity') != 0
+        return not error_happened
+
+    def uninstall(self, packages: list[str]) -> bool:
+        if not packages:
+            return True
+        from os import system
+
+        id_by_name = {r['Name']: r['Id'] for r in self.winget_result}
+
+        error_happened = False
+        for package in packages:
+            if package in id_by_name:
+                package = id_by_name[package]
+            error_happened = error_happened or system(f'winget uninstall "{package}" --disable-interactivity') != 0
+        return not error_happened
+
+    def is_available(self) -> bool:
+        from shutil import which
+
+        return which('winget') is not None
+
 
 package_managers: list[PackageManager] = list(
-    filter(lambda pm: pm.is_available(), [Pacman(), Custom()])
+    filter(lambda pm: pm.is_available(), [Pacman(), Custom(), Winget()])
 )
 
 
