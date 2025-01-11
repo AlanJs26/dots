@@ -5,6 +5,8 @@ from archdots.settings import read_config
 def get_unmanaged_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     config = read_config()
     installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers}
+    if 'pkgs' not in config:
+        config['pkgs'] = {}
 
     unmanaged_packages: dict[PackageManager, list[str]] = {}
     for pm in installed_pkgs_by_pm:
@@ -19,6 +21,8 @@ def get_unmanaged_packages(use_memo=True) -> dict[PackageManager, list[str]]:
 
 def get_managed_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     config = read_config()
+    if 'pkgs' not in config:
+        return {}
     installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers}
 
     installed_packages: dict[PackageManager, list[str]] = {}

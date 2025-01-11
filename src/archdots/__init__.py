@@ -61,6 +61,7 @@ def main():
         args = parser.parse_args()
         run_command(args, metadata_dict, parser_dict)
 
+        os.makedirs(CACHE_FOLDER, exist_ok=True)
         with open(cached_command_tree_path, "w") as f:
             f.write(command_tree_json)
         with open(cached_metadata_dict_path, "w") as f:

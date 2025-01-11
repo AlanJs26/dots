@@ -102,7 +102,7 @@ def build_argparser(
         if node not in node_history:
             node_history.append(node)
 
-        name_path = "/".join([node.name for node in node_history])
+        name_path = os.sep.join([node.name for node in node_history])
         parent_name_path = os.path.dirname(name_path)
 
         if next_working_nodes := list(
