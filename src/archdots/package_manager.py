@@ -234,7 +234,8 @@ class Custom(PackageManager):
         for package in sorted_packages[::-1]:
             # do not uninstall dependencies that are marked as managed
             if (
-                "pkgs" in config
+                package not in filtered_packages
+                and "pkgs" in config
                 and "custom" in config["pkgs"]
                 and package.name in config["pkgs"]["custom"]
                 or not package.check(True)

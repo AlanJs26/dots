@@ -10,6 +10,7 @@ from archdots.exceptions import (
     PackageManagerException,
     PackageException,
     ParseException,
+    SettingsException,
 )
 from archdots.constants import (
     CONFIG_FOLDER,
@@ -72,6 +73,7 @@ def main():
         PackageManagerException,
         ParseException,
         GuiException,
+        SettingsException,
         CommandException,
     ) as e:
         from rich.console import Console

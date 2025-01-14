@@ -37,7 +37,7 @@ if args["install"]:
     for pm, pkgs in pkgs_by_pm.items():
         pm.install(pkgs)
 if args["uninstall"]:
-    pkgs_by_pm = split_packages_by_pm(args["install"])
+    pkgs_by_pm = split_packages_by_pm(args["uninstall"])
     for pm, pkgs in pkgs_by_pm.items():
         pm.uninstall(pkgs)
 
