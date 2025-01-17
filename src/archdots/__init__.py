@@ -13,10 +13,12 @@ from archdots.exceptions import (
     SettingsException,
 )
 from archdots.constants import (
+    CHEZMOI_FOLDER,
     CONFIG_FOLDER,
     COMMANDS_FOLDER,
     MODULE_PATH,
     CACHE_FOLDER,
+    PLATFORM,
 )
 from archdots.argparsing import (
     run_command,
@@ -58,8 +60,19 @@ def main():
         parser, metadata_dict, parser_dict = build_argparser(
             command_tree, cached_metadata_dict
         )
+        parser.add_argument('--info', action='store_true', help="useful informations")
 
         args = parser.parse_args()
+
+        if args.info == True:
+            from rich import print
+            print('archdots\n')
+            print('{: <20}: {}'.format('config folder', CONFIG_FOLDER))
+            print('{: <20}: {}'.format('cache folder', CACHE_FOLDER))
+            print('{: <20}: {}'.format('chezmoi folder', CHEZMOI_FOLDER))
+            print('{: <20}: {}'.format('recognized platform', PLATFORM))
+            exit()
+
         run_command(args, metadata_dict, parser_dict)
 
         os.makedirs(CACHE_FOLDER, exist_ok=True)
