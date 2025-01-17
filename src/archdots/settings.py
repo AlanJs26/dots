@@ -16,15 +16,15 @@ _last_mtime = 0
 def iterdict_merge(
     d: dict[Any, Any], callback: Callable[[Any, Any], Any]
 ) -> dict[Any, Any]:
-    # from deepmerge import always_merger
+    from deepmerge import always_merger
 
     d_copy = d.copy()
     for k, v in d.items():
         if isinstance(v, dict):
             d_copy[k] = iterdict_merge(v, callback)
         elif (result := callback(k, v)) != None:
-            # always_merger.merge(d_copy, iterdict_merge(result, callback))
-            d_copy = {**d, **iterdict_merge(result, callback)}
+            always_merger.merge(d_copy, iterdict_merge(result, callback))
+            # d_copy = {**d, **iterdict_merge(result, callback)}
             del d_copy[k]
     return d_copy
 
@@ -154,6 +154,7 @@ def iterdict_imports(
                 continue
             d_copy[k] = v
 
+    # :TODO: handle merging lists across imported files
     for k, v in d_original.items():
         if k not in d and k != "import":
             del d_copy[k]

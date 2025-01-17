@@ -8,6 +8,7 @@ dependencies = [
     "argparse>=1.4.0",
     "dacite>=1.8.1",
     "deepmerge>=2.0",
+    "lark>=1.2.2",
     "plyer>=2.1.0",
     "psutil>=6.1.1",
     "pyside6==6.8.1",

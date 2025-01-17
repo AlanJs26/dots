@@ -4,9 +4,10 @@ import subprocess
 from typing import Any
 import re
 from dataclasses import dataclass
-from archdots.constants import CACHE_FOLDER, PLATFORM
+from archdots.constants import CACHE_FOLDER, PLATFORM, PLATFORM
 from archdots.utils import is_url_valid
 from archdots.exceptions import PackageException
+from pathlib import Path
 
 
 @dataclass
@@ -129,18 +130,56 @@ class Package:
     ):
         os.makedirs(self.get_cache_folder(), exist_ok=True)
 
-        bashdict = ""
-        if sources:
-            for i, folder in enumerate(sources):
-                bashdict += f'["{i}"]="{folder}" '
-            bashdict = "declare -A sourced=(" + bashdict.strip() + ")"
+        if PLATFORM == "linux":
+            bashdict = ""
+            if sources:
+                for i, folder in enumerate(sources):
+                    bashdict += f'["{i}"]="{folder}" '
+                bashdict = "declare -A sourced=(" + bashdict.strip() + ")"
 
-        command = f"""
-        PKGPATH="{os.path.dirname(self.pkgbuild)}"
-        {bashdict}
-        source {os.path.abspath(self.pkgbuild)}
-        {name}
-        """
+            command = f"""
+            PKGPATH="{os.path.dirname(self.pkgbuild)}"
+            {bashdict}
+            source {os.path.abspath(self.pkgbuild)}
+            {name}
+            """
+        else:
+            hashtable = ""
+            if sources:
+                hashtable = "$sourced = @{\n"
+                for i, folder in enumerate(sources):
+                    hashtable += f'"{i}" = "{folder}"\n'
+                hashtable += "}"
+
+            from archdots.package_parser import parser, PackageTransformer, Function
+
+            with open(self.pkgbuild, "r") as f:
+                text = f.read()
+            tree = parser.parse(text)
+            parsed_functions: list[Function] = [
+                f
+                for f in PackageTransformer().transform(tree)
+                if isinstance(f, Function)
+            ]
+
+            found_function = next(
+                filter(
+                    lambda item: item.name == name,
+                    parsed_functions,
+                ),
+                None,
+            )
+            if not found_function:
+                raise PackageException(
+                    f'tried to executed an unknown PKGBUILD function "{found_function}"',
+                    self,
+                )
+
+            command = f"""
+            $PKGPATH = "{os.path.dirname(self.pkgbuild)}"
+            {hashtable}
+            {found_function.content}
+            """
 
         process = subprocess.Popen(
             command,
@@ -227,12 +266,10 @@ def get_packages(folder: str, ignore_platform=False) -> list[Package]:
     return list(filter(lambda pkg: PLATFORM == pkg.platform, packages))
 
 
-def package_from_path(folder_path) -> Package:
-    """
-    given a path to a folder that contains a PKGBUILD, run it and extract all desired fields.
-    raise an error when there is some funciton/field missing.
-    """
-    pkg_name = os.path.basename(folder_path)
+def parse_package_bash(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
+    pkgbuild_path = Path(pkgbuild_path)
+    pkg_name = pkgbuild_path.parent.stem
+
     known_fields = [
         "depends",
         "description",
@@ -247,7 +284,7 @@ def package_from_path(folder_path) -> Package:
     ]
     command = f"""
     prev="$(declare -p)"
-    source {folder_path}/PKGBUILD
+    source {pkgbuild_path}
     diff <(cat<<<$prev) <(declare -p) |cut -d' ' -f4-|grep -E '^({'|'.join([*known_fields, *optional_fields])})'
     echo ===
     declare -F|cut -d' ' -f3-|grep -E '^({'|'.join(known_funcs)})'
@@ -263,9 +300,7 @@ def package_from_path(folder_path) -> Package:
     )
     if not process.stdout:
         raise PackageException(
-            "could not read PKGBUILD",
-            pkg_name=pkg_name,
-            pkgbuild=folder_path + "/PKGBUILD",
+            "could not read PKGBUILD", pkg_name=pkg_name, pkgbuild=str(pkgbuild_path)
         )
 
     vars_text, func_text, *_ = process.stdout.read().split("===")
@@ -283,24 +318,64 @@ def package_from_path(folder_path) -> Package:
 
     fields = re.findall(r"^(\w+?)=(.+)\n", vars_text, flags=re.MULTILINE)
     fields_dict: dict[str, Any] = {key: parse_value(value) for key, value in fields}
-
-    missing_fields = list(set(known_fields).difference(fields_dict.keys()))
-    if missing_fields:
-        raise PackageException(
-            f"missing fields: {missing_fields}",
-            pkg_name=pkg_name,
-            pkgbuild=folder_path + "/PKGBUILD",
-        )
-
-    # filter out empty strings
     funcs = list(filter(str, func_text.splitlines()))
 
-    missing_funcs = list(set(known_funcs).difference(funcs))
-    if missing_funcs:
+    return fields_dict, funcs
+
+
+def parse_package_lark(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
+    from archdots.package_parser import parser, PackageTransformer, Function, Item
+
+    with open(pkgbuild_path, "r") as f:
+        text = f.read()
+    tree = parser.parse(text)
+    parsed_items: list[Function | Item] = PackageTransformer().transform(tree)
+
+    fields_dict = {
+        item.key: str(item.value) for item in parsed_items if isinstance(item, Item)
+    }
+    funcs = [func.name for func in parsed_items if isinstance(func, Function)]
+
+    return fields_dict, funcs
+
+
+def package_from_path(folder_path: str | Path) -> Package:
+    """
+    given a path to a folder that contains a PKGBUILD, run it and extract all desired fields.
+    raise an error when there is some funciton/field missing.
+    """
+    folder_path = Path(folder_path)
+    pkg_name = folder_path.stem
+    pkgbuild_path = folder_path / "PKGBUILD"
+
+    if PLATFORM == "linux":
+        fields_dict, funcs = parse_package_bash(pkgbuild_path)
+    else:
+        fields_dict, funcs = parse_package_lark(pkgbuild_path)
+
+    known_fields = [
+        "depends",
+        "description",
+        "source",
+        "url",
+    ]
+    known_funcs = [
+        "check",
+        "install",
+        "uninstall",
+    ]
+
+    if missing_fields := set(known_fields).difference(fields_dict.keys()):
         raise PackageException(
-            f"missing functions: {missing_funcs}",
+            f"missing fields: {list(missing_fields)}",
             pkg_name=pkg_name,
-            pkgbuild=folder_path + "/PKGBUILD",
+            pkgbuild=str(pkgbuild_path),
+        )
+    if missing_funcs := set(known_funcs).difference(funcs):
+        raise PackageException(
+            f"missing functions: {list(missing_funcs)}",
+            pkg_name=pkg_name,
+            pkgbuild=str(pkgbuild_path),
         )
 
     fields_dict["depends"] = [
@@ -314,12 +389,12 @@ def package_from_path(folder_path) -> Package:
         raise PackageException(
             f'invalid platform: {fields_dict["platform"]}',
             pkg_name=pkg_name,
-            pkgbuild=folder_path + "/PKGBUILD",
+            pkgbuild=str(pkgbuild_path),
         )
 
     return Package(
-        name=os.path.basename(folder_path),
-        pkgbuild=os.path.join(folder_path, "PKGBUILD"),
+        name=pkg_name,
+        pkgbuild=str(pkgbuild_path),
         available_functions=funcs,
         **fields_dict,
     )

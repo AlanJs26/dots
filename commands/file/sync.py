@@ -1,6 +1,10 @@
 """
 ARCHDOTS
 help: sync dotfiles with chezmoi
+flags:
+    - long: --commit
+      type: bool
+      help: do not re-add files, only do a commit/push
 ARCHDOTS
 """
 
@@ -15,6 +19,24 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
 from archdots.settings import read_config
+
+
+def commit_changes():
+    os.system("chezmoi git -- diff --cached --stat")
+    if Confirm.ask("[cyan]:: [/]push changes?", default=True):
+        message = datetime.now().strftime("%d-%m-%y %H:%M:%S")
+        if not Confirm.ask(
+            f"[cyan]:: [/]use default message: {message}?", default=True
+        ):
+            while not (message := Prompt.ask("[cyan]:: [/]new message")):
+                pass
+        os.system(f'chezmoi git -- commit -m "{message}"')
+        os.system(f"chezmoi git push")
+
+
+if args["commit"]:
+    commit_changes()
+    exit()
 
 commands = {
     "re-add": "chezmoi re-add",
@@ -80,10 +102,4 @@ stdout, stderr = process.communicate()
 if len(stdout.strip().splitlines()) == 0:
     exit()
 
-if Confirm.ask("[cyan]:: [/]push changes?", default=True):
-    message = datetime.now().strftime("%d-%m-%y %H:%M:%S")
-    if not Confirm.ask(f"[cyan]:: [/]use default message: {message}?", default=True):
-        while not (message := Prompt.ask("[cyan]:: [/]new message")):
-            pass
-    os.system(f'chezmoi git -- commit -m "{message}"')
-    os.system(f"chezmoi git push")
+commit_changes()
