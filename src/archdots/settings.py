@@ -16,6 +16,9 @@ _last_mtime = 0
 def iterdict_merge(
     d: dict[Any, Any], callback: Callable[[Any, Any], Any]
 ) -> dict[Any, Any]:
+    """
+    auxiliary function. call a callback for each key/value inside dict and merge the result
+    """
     from deepmerge import always_merger
 
     d_copy = d.copy()
@@ -29,7 +32,10 @@ def iterdict_merge(
     return d_copy
 
 
-def iter_imports(imports_any: Any):
+def iter_imports(imports_any: Any, recursive=False):
+    """
+    Returns an Generator for all imported files inside a given config
+    """
     custom_folder = Path(CONFIG_FOLDER)
 
     if isinstance(imports_any, str):
@@ -54,10 +60,19 @@ def iter_imports(imports_any: Any):
         if not os.path.isfile(import_path):
             raise SettingsException(f'Invalid import. "{import_path}" is not a file')
 
+        if recursive:
+            with open(import_path, "r") as f:
+                imported_config = yaml.safe_load(f)
+                if "import" in imported_config:
+                    yield from (Path(p) for p in imported_config["import"])
+
         yield import_path
 
 
-def compare_mtime_with_imports(config: dict[str, Any], mtime: float):
+def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
+    """
+    returns `True` if there is a config file that modification time is more recent than `mtime`
+    """
     if "import" not in config:
         return False
 
@@ -83,7 +98,11 @@ def compare_mtime_with_imports(config: dict[str, Any], mtime: float):
     return False
 
 
-def read_config(use_memo=False):
+def read_config(use_memo=True) -> dict[Any, Any]:
+    """
+    read the config file with imports
+    `use_memo`: If True, the last processed config will be used. There is also an cache config file that will be used if available.
+    """
     global _last_mtime
     global _config_memo
     module_path = Path(MODULE_PATH)
@@ -115,17 +134,24 @@ def read_config(use_memo=False):
             default_config = f.read()
         with open(config_path, "w") as f:
             f.write(default_config)
-    elif _config_memo and config_path.lstat().st_mtime == _last_mtime:
+    elif use_memo and _config_memo and config_path.lstat().st_mtime == _last_mtime:
         return _config_memo
 
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
     if CONFIG_CACHE.is_file() and (
-        use_memo or compare_mtime_with_imports(config, config_path.lstat().st_mtime)
+        use_memo or not compare_mtime_with_imports(config, config_path.lstat().st_mtime)
     ):
         with open(CONFIG_CACHE, "r") as f:
-            return yaml.safe_load(f)
+            cached_config = yaml.safe_load(f)
+            if not isinstance(cached_config, dict):
+                from rich.console import Console
+
+                warning_console = Console(style="yellow italic", stderr=True)
+                warning_console.print("warning: invalid cached config.")
+            else:
+                return cached_config
 
     config = iterdict_merge(config, handle_imports)
 
@@ -141,61 +167,122 @@ def read_config(use_memo=False):
     return _config_memo
 
 
+def freeze(d: Any):
+    """
+    Converts any of common types into a hashble data structure
+    dict and list -> frozenset
+    """
+    if isinstance(d, dict):
+        fs = frozenset((key, freeze(value)) for key, value in d.items())
+        return fs
+    elif isinstance(d, list):
+        return frozenset(freeze(value) for value in d)
+    return d
+
+
+def unfreeze(d: frozenset):
+    """
+    Converts a fronzeset into a dict or list
+    """
+    if not isinstance(d, frozenset):
+        return d
+
+    if isinstance(next(iter(d), None), tuple):
+        return dict((k, unfreeze(v)) for k, v in d)
+
+    return list(unfreeze(v) for v in d)
+
+
 def iterdict_imports(
     config: dict[Any, Any],
-    d_original: dict[Any, Any],
-    d: dict[Any, Any],
-    ignore_new=False,
+    merged_config: dict[Any, Any],
+    new_merged_config: dict[Any, Any],
+    config_path=Path(CONFIG_FOLDER) / "config.yaml",
 ) -> dict[Any, Any]:
-    d_copy = d_original.copy()
-    if not ignore_new:
-        for k, v in d.items():
-            if k in config:
-                continue
-            d_copy[k] = v
+    """
+    Traverse a config imports and write changes on correct files
+    """
 
-    # :TODO: handle merging lists across imported files
-    for k, v in d_original.items():
-        if k not in d and k != "import":
-            del d_copy[k]
-        elif isinstance(v, dict):
-            d_copy[k] = iterdict_imports(config[k], d_original[k], d[k])
-        elif k == "import":
-            for import_path in iter_imports(v):
-                with open(import_path, "r") as f:
-                    imported_config = yaml.safe_load(f)
-                    if not isinstance(imported_config, dict):
-                        raise SettingsException(
-                            f'Invalid import. Contents of "{import_path}" is not a valid imported config. All imported files must contain at least one field'
-                        )
-                with open(import_path, "w") as f:
-                    f.write(
-                        yaml.dump(
-                            iterdict_imports(
-                                config, imported_config, d, ignore_new=True
-                            )
-                        )
-                    )
-        else:
-            d_copy[k] = d[k]
-    return d_copy
+    all_configs = [config]
+    all_config_paths = [config_path]
+    if "import" in config:
+        from itertools import chain
+
+        all_config_paths = list(
+            sorted(
+                chain(all_config_paths, iter_imports(config["import"])),
+                key=lambda p: p.lstat().st_mtime,
+                reverse=True,
+            )
+        )
+        all_configs = list(
+            map(
+                lambda p: yaml.safe_load(p.read_text()),
+                all_config_paths,
+            )
+        )
+
+    for k, v in new_merged_config.items():
+        if k in merged_config:
+            continue
+        config[k] = v
+
+    for current_config, current_config_path in zip(all_configs, all_config_paths):
+        if not isinstance(current_config, dict):
+            raise SettingsException(
+                f'Invalid import. Contents of "{current_config_path}" is not a valid imported config. All imported files must contain at least one field'
+            )
+
+        for k, v in current_config.copy().items():
+            if k == "import":
+                continue
+            elif k not in new_merged_config:
+                del current_config[k]
+            elif isinstance(v, dict):
+                if not isinstance(new_merged_config[k], dict):
+                    current_config[k] = new_merged_config[k]
+                    continue
+                current_config[k] = iterdict_imports(
+                    v,
+                    merged_config[k],
+                    new_merged_config[k],
+                    current_config_path,
+                )
+            elif isinstance(v, list):
+                if not isinstance(new_merged_config[k], list):
+                    current_config[k] = new_merged_config[k]
+                    continue
+
+                new_merged_items = freeze(new_merged_config[k])
+
+                keeped_items = frozenset(freeze(v)).intersection(new_merged_items)
+
+                new_items = new_merged_items.difference(freeze(merged_config[k]))
+
+                current_config[k] = [*unfreeze(keeped_items), *unfreeze(new_items)]
+
+                new_merged_config[k] = unfreeze(
+                    new_merged_items - keeped_items - new_items
+                )
+            else:
+                current_config[k] = new_merged_config[k]
+
+        with open(current_config_path, "w") as f:
+            yaml.dump(current_config, f)
+
+    return config
 
 
 def save_config(data: Any):
-    module_path = Path(MODULE_PATH)
-    custom_folder = Path(CONFIG_FOLDER)
+    """
+    Save a modified config on default location
+    """
 
-    if not os.path.isfile(custom_folder / "config.yaml"):
-        os.makedirs(custom_folder)
-        with open(module_path / "config.default.yaml", "r") as f:
-            default_config = f.read()
-        with open(custom_folder / "config.yaml", "w") as f:
-            f.write(default_config)
+    merged_config = read_config(False)
 
-    merged_config = read_config()
-    with open(custom_folder / "config.yaml", "r") as f:
+    with open(Path(CONFIG_FOLDER) / "config.yaml", "r") as f:
         config = yaml.safe_load(f)
-        new_config = iterdict_imports(merged_config, config, data)  # type: ignore
+    new_config = iterdict_imports(config, merged_config, data)
 
-    with open(custom_folder / "config.yaml", "w") as f:
+    with open(Path(CONFIG_FOLDER) / "config.yaml", "w") as f:
         f.write(yaml.dump(new_config))
