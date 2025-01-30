@@ -13,7 +13,6 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from simple_term_menu import TerminalMenu
 from rich import print
 
 from archdots.package import get_packages
@@ -37,6 +36,8 @@ if args["name"]:
             exit()
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
+    from simple_term_menu import TerminalMenu
+
     print("[cyan]:: [/]Choose health scripts to configure")
 
     terminal_menu = TerminalMenu(

@@ -15,7 +15,6 @@ args = args  # type: ignore
 
 from archdots.package import get_packages
 from archdots.exceptions import PackageException
-from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm
 from archdots.constants import HEALTH_FOLDER
@@ -37,6 +36,8 @@ if args["name"]:
             exit()
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
+    from simple_term_menu import TerminalMenu
+
     print("[cyan]:: [/]Choose health scripts to delete")
 
     terminal_menu = TerminalMenu(

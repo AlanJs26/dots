@@ -33,8 +33,8 @@ class Package:
 
         if self.url and not is_url_valid(self.url):
             raise PackageException(f'url "{self.url}" is bad formated', self)
-        if not all(is_url_valid(source) for source in self.source):
-            raise PackageException(f"invalid source(s)", self)
+        if self.source and (not all(is_url_valid(source) for source in self.source)):
+            raise PackageException(f"invalid source(s)\nsources: {self.source}", self)
 
     def __hash__(self) -> int:
         return hash(self.name)
@@ -120,6 +120,9 @@ class Package:
                         f.extractall(sourced)
 
                 os.remove(downloaded_file)
+            else:
+                # download source inside cache folder
+                urlretrieve(source, downloaded_file)
 
             sourced_folders.append(sourced)
 
@@ -175,15 +178,15 @@ class Package:
                     self,
                 )
 
-            command = f"""
-            $PKGPATH = "{os.path.dirname(self.pkgbuild)}"
-            {hashtable}
-            {found_function.content}
-            """
+            file_command_path = Path(self.get_cache_folder()) / f'{name}.ps1'
+            with open(file_command_path, 'w') as f:
+                f.write(f'$PKGPATH = "{os.path.dirname(self.pkgbuild)}"\n{hashtable}\n{found_function.content}')
+            command = f'powershell -File "{file_command_path.resolve()}"'
 
         process = subprocess.Popen(
             command,
             shell=True,
+            executable=shutil.which('cmd') if PLATFORM == 'windows' else None,
             stdout=subprocess.DEVNULL if supress_output else None,
             stderr=subprocess.DEVNULL if supress_output else None,
             cwd=self.get_cache_folder(),
@@ -332,7 +335,7 @@ def parse_package_lark(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[
     parsed_items: list[Function | Item] = PackageTransformer().transform(tree)
 
     fields_dict = {
-        item.key: str(item.value) for item in parsed_items if isinstance(item, Item)
+        item.key: item.value for item in parsed_items if isinstance(item, Item)
     }
     funcs = [func.name for func in parsed_items if isinstance(func, Function)]
 

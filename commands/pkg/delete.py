@@ -15,7 +15,6 @@ args = args  # type: ignore
 
 from archdots.exceptions import PackageException
 from archdots.package_manager import Custom
-from simple_term_menu import TerminalMenu
 from rich import print
 from rich.prompt import Confirm
 from archdots.constants import CONFIG_FOLDER
@@ -41,6 +40,8 @@ if args["name"]:
             exit()
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
+    from simple_term_menu import TerminalMenu
+
     print("[cyan]:: [/]Choose packages to delete")
 
     terminal_menu = TerminalMenu(

@@ -336,7 +336,7 @@ class Winget(PackageManager):
         import json 
 
         process = subprocess.Popen(
-            f'powershell -Command "Get-WinGetPackage -s winget|ConvertTo-Json"',
+            f'powershell -Command "Get-WinGetPackage -s winget|where -Property Source -eq "winget"|ConvertTo-Json"',
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,

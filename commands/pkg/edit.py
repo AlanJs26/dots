@@ -12,11 +12,9 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from simple_term_menu import TerminalMenu
 from rich import print
+from archdots.utils import default_editor
 from archdots.package_manager import Custom
-
-import os
 
 all_packages = Custom().get_packages()
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
@@ -28,6 +26,7 @@ if name:
         exit()
     selected_package = packages_by_name[name]
 else:
+    from simple_term_menu import TerminalMenu
     print("[cyan]:: [/]Choose which package to edit")
 
     terminal_menu = TerminalMenu(
@@ -40,4 +39,4 @@ else:
 
     selected_package = all_packages[menu_entry_index]
 
-os.system(f'$EDITOR "{selected_package.pkgbuild}"')
+default_editor(selected_package.pkgbuild)

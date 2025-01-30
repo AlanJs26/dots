@@ -9,6 +9,7 @@ args = args  # type: ignore
 
 from archdots.package import Package
 from archdots.package_manager import package_managers, are_custom_packages_valid, Custom
+from archdots.utils import default_editor
 from rich import print
 from rich.prompt import Prompt, Confirm
 from archdots.constants import HEALTH_FOLDER
@@ -100,5 +101,5 @@ os.makedirs(Path(HEALTH_FOLDER) / pkg_name, exist_ok=True)
 with open(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
     f.write(new_pkgbuild.strip())
 
-if Confirm.ask("Open PKGBUILD on default $EDITOR?", default=True):  # type: ignore
-    os.system(f'$EDITOR "{Path(HEALTH_FOLDER) / pkg_name / 'PKGBUILD'}"')
+if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
+    default_editor(Path(HEALTH_FOLDER) / pkg_name / 'PKGBUILD')

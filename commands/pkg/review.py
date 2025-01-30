@@ -9,10 +9,13 @@ args = args  # type: ignore
 
 from enum import Enum
 import itertools
-import tty, termios, sys
+
+# import tty, termios, sys
+import sys
 from typing import NamedTuple
 from math import ceil
 
+from archdots.constants import PLATFORM
 from archdots.package_manager import Custom, PackageManager, package_managers
 from archdots.settings import read_config, save_config
 
@@ -25,6 +28,56 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 warning_console = Console(style="yellow italic", stderr=True)
+
+
+class _Getch:
+    """Gets a single character from standard input.  Does not echo to the
+    screen."""
+
+    def __init__(self):
+        if PLATFORM == "linux":
+            self.impl = _GetchUnix()
+        else:
+            self.impl = _GetchWindows()
+
+    def __call__(self):
+        ch = self.impl()
+        if ord(ch) in [3, 4, 26, 27]:
+            return ""
+        if isinstance(ch, bytes):
+            return ch.decode()
+        return str(ch)
+
+
+class _GetchUnix:
+    def __init__(self):
+        import tty, sys
+
+    def __call__(self):
+        import sys, tty, termios
+
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+
+class _GetchWindows:
+    def __init__(self):
+        import msvcrt
+
+    def __call__(self):
+        import msvcrt
+
+        return msvcrt.getch()
+
+
+getchar = _Getch()
+
 
 VISIBLE_ROWS = 10
 
@@ -71,16 +124,16 @@ class Row(NamedTuple):
     status: Status
 
 
-def getchar():
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    tty.setraw(sys.stdin.fileno())
-    ch = sys.stdin.read(1)
-    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    # Exit on ctrl-c, ctrl-d, ctrl-z, or ESC
-    if ord(ch) in [3, 4, 26, 27]:
-        return ""
-    return ch
+# def getchar():
+#     fd = sys.stdin.fileno()
+#     old_settings = termios.tcgetattr(fd)
+#     tty.setraw(sys.stdin.fileno())
+#     ch = sys.stdin.read(1)
+#     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+#     # Exit on ctrl-c, ctrl-d, ctrl-z, or ESC
+#     if ord(ch) in [3, 4, 26, 27]:
+#         return ""
+#     return ch
 
 
 packages_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
@@ -88,15 +141,18 @@ pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
 
 config = read_config()
 
-if "pkgs" not in config:
-    print("there is no pkgs configured", file=sys.stderr)
-    exit()
-
 unmanaged_packages: dict[str, list[str]] = {}
-for pm in config["pkgs"]:
-    if pm not in packages_by_pm:
-        continue
-    unmanaged_packages[pm] = list(set(packages_by_pm[pm]) - set(config["pkgs"][pm]))
+
+if "pkgs" not in config:
+    unmanaged_packages = packages_by_pm
+    # print("there is no pkgs configured", file=sys.stderr)
+    # exit()
+else:
+    for pm in packages_by_pm:
+        if pm not in config["pkgs"]:
+            unmanaged_packages[pm] = packages_by_pm[pm]
+            continue
+        unmanaged_packages[pm] = list(set(packages_by_pm[pm]) - set(config["pkgs"][pm]))
 
 if not unmanaged_packages:
     print("there are any unmanaged packages")
@@ -111,7 +167,7 @@ rows.sort(key=lambda r: r.pkg)
 lost_packages = set(pkg.name for pkg in Custom().get_packages(True)).difference(
     Custom().get_installed(True)
 )
-if "custom" in config["pkgs"]:
+if "pkgs" in config and "custom" in config["pkgs"]:
     lost_packages = lost_packages.difference(config["pkgs"]["custom"])
 
 if not rows:
@@ -236,7 +292,13 @@ if packages_to_uninstall:
             error_happened = not pm_by_name[pm_name].uninstall(pkgs) or error_happened
 
 packages_to_add = list(filter(lambda row: row.status == Status.ADDED, rows))
+
+if "pkgs" not in config:
+    config["pkgs"] = {}
+
 for pm_name, grouped_rows in itertools.groupby(packages_to_add, lambda row: row.pm):
+    if pm_name not in config["pkgs"]:
+        config["pkgs"][pm_name] = []
     pkgs = [row.pkg for row in grouped_rows]
     config["pkgs"][pm_name].extend(pkgs)
 

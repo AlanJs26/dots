@@ -1,9 +1,22 @@
-from typing import TypeVar, ParamSpec
-from collections.abc import Callable
-from urllib.parse import urlparse
+import os
 import inspect
-
 import functools
+from pathlib import Path
+from urllib.parse import urlparse
+from collections.abc import Callable
+from typing import TypeVar, ParamSpec
+
+from archdots.constants import PLATFORM
+
+
+def default_editor(file: Path | str):
+    if PLATFORM == "windows":
+        import webbrowser
+
+        webbrowser.open(str(file))
+        # os.system(f'"{file}"')
+    else:
+        os.system(f'$EDITOR "{file}"')
 
 
 class SingletonMeta(type):

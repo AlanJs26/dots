@@ -9,9 +9,10 @@ args = args  # type: ignore
 
 from archdots.package import Package
 from archdots.package_manager import package_managers, are_custom_packages_valid, Custom
+from archdots.utils import default_editor
 from rich import print
 from rich.prompt import Prompt, Confirm
-from archdots.constants import PACKAGES_FOLDER
+from archdots.constants import PACKAGES_FOLDER, PLATFORM
 from pathlib import Path
 
 import os
@@ -84,7 +85,7 @@ url='{pkg_url.replace("'", "\\'")}'
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=({' '.join(f"'{source}'" for source in pkg_sources)})
 # make this package platform specific. Supported platforms: linux, windows 
-# platform='linux'
+# platform='{PLATFORM}'
 
 # All items of source will be downloaded and extracted (when necessary)
 # all downloaded (or extracted folders) are stored inside ${{sourced[@]}}
@@ -124,5 +125,5 @@ if Confirm.ask(f"Add {pkg_name} as a managed package?", default=True):  # type: 
     config["pkgs"]["custom"].append(pkg_name)
     save_config(config)
 
-if Confirm.ask("Open PKGBUILD on default $EDITOR?", default=True):  # type: ignore
-    os.system(f'$EDITOR "{Path(PACKAGES_FOLDER) / pkg_name / 'PKGBUILD'}"')
+if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
+    default_editor(Path(PACKAGES_FOLDER) / pkg_name / 'PKGBUILD')

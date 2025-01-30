@@ -73,10 +73,14 @@ def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
     """
     returns `True` if there is a config file that modification time is more recent than `mtime`
     """
+    config_path = Path(CONFIG_FOLDER) / "config.yaml"
     if "import" not in config:
+        if config_path.lstat().st_mtime > mtime:
+            return True
+
         return False
 
-    pending = [*iter_imports(config["import"])]
+    pending = [*iter_imports(config["import"]), config_path]
 
     while pending:
         next_import = pending.pop()
@@ -141,7 +145,8 @@ def read_config(use_memo=True) -> dict[Any, Any]:
         config = yaml.safe_load(f)
 
     if CONFIG_CACHE.is_file() and (
-        use_memo or not compare_mtime_with_imports(config, config_path.lstat().st_mtime)
+        use_memo
+        and not compare_mtime_with_imports(config, CONFIG_CACHE.lstat().st_mtime)
     ):
         with open(CONFIG_CACHE, "r") as f:
             cached_config = yaml.safe_load(f)
@@ -241,6 +246,8 @@ def iterdict_imports(
             elif isinstance(v, dict):
                 if not isinstance(new_merged_config[k], dict):
                     current_config[k] = new_merged_config[k]
+                    continue
+                if k not in merged_config:
                     continue
                 current_config[k] = iterdict_imports(
                     v,
