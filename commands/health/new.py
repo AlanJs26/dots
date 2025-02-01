@@ -12,7 +12,7 @@ from archdots.package_manager import package_managers, are_custom_packages_valid
 from archdots.utils import default_editor
 from rich import print
 from rich.prompt import Prompt, Confirm
-from archdots.constants import HEALTH_FOLDER
+from archdots.constants import HEALTH_FOLDER, PLATFORM
 from pathlib import Path
 
 import os
@@ -34,10 +34,17 @@ while not (pkg_description := Prompt.ask("[cyan]description [red](*)")):
 all_packages = Custom().get_packages()
 
 print("[cyan]:: [/]Dependencies")
-print('dependencies are structured like "packagemanager:name". Ex:  apt:ping')
-print("if package manager prefix is empty, it will be considered a custom dependency")
-print("available custom dependencies: " + ", ".join(pkg.name for pkg in all_packages))
-print("available package managers: " + ", ".join(pm.name for pm in package_managers))
+print(
+    'dependencies are structured like "packagemanager:name". Ex:  apt:ping, custom:package'
+)
+print(
+    "available package managers: "
+    + ", ".join(f"[cyan]{pm.name}[/]" for pm in package_managers)
+)
+print(
+    "available custom dependencies: "
+    + ", ".join(f"[cyan]{pkg.name}[/]" for pkg in all_packages)
+)
 print("\nleave empty for no dependencies")
 
 pkg_dependencies = list(filter(str, [Prompt.ask("[cyan]dependency name")]))
@@ -72,7 +79,7 @@ url=''
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=()
 # make this health script platform specific. Supported platforms: linux, windows 
-# platform='linux'
+platform='{PLATFORM}'
 
 # All items of source will be downloaded and extracted (when necessary)
 # all downloaded (or extracted folders) are stored inside ${{sourced[@]}}
@@ -102,4 +109,4 @@ with open(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
     f.write(new_pkgbuild.strip())
 
 if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
-    default_editor(Path(HEALTH_FOLDER) / pkg_name / 'PKGBUILD')
+    default_editor(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD")

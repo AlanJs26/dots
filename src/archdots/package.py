@@ -9,6 +9,10 @@ from archdots.utils import is_url_valid
 from archdots.exceptions import PackageException
 from pathlib import Path
 
+from shutil import which
+
+PWSH_AVAILABLE = which("winget") is not None
+
 
 @dataclass
 class Package:
@@ -24,10 +28,14 @@ class Package:
     def __post_init__(self):
         if not self.name or not self.description:
             raise PackageException("all packages must have a name and description")
-        if not all(":" in dep for dep in self.depends):
-            raise PackageException(
-                "all dependencies in must have a package manager specifier", self
-            )
+
+        for dep in self.depends:
+            if ":" not in dep:
+                raise PackageException(
+                    f"Invalid dependency: {dep}\n\nall dependencies in must have a package manager specifier",
+                    self,
+                )
+
         if ":" in self.name:
             raise PackageException(": are not allowed in package names", self)
 
@@ -146,6 +154,16 @@ class Package:
             source {os.path.abspath(self.pkgbuild)}
             {name}
             """
+
+            process = subprocess.Popen(
+                command,
+                shell=True,
+                executable=None,
+                stdout=subprocess.DEVNULL if supress_output else None,
+                stderr=subprocess.DEVNULL if supress_output else None,
+                cwd=self.get_cache_folder(),
+            )
+
         else:
             hashtable = ""
             if sources:
@@ -178,19 +196,25 @@ class Package:
                     self,
                 )
 
-            file_command_path = Path(self.get_cache_folder()) / f'{name}.ps1'
-            with open(file_command_path, 'w') as f:
-                f.write(f'$PKGPATH = "{os.path.dirname(self.pkgbuild)}"\n{hashtable}\n{found_function.content}')
-            command = f'powershell -File "{file_command_path.resolve()}"'
+            file_command_path = Path(self.get_cache_folder()) / f"{name}.ps1"
+            with open(file_command_path, "w") as f:
+                f.write(
+                    '$ErrorActionPreference = "Stop"\n'
+                    + "function which {Param([string]$command) if ((Get-Command $command -ErrorAction SilentlyContinue) -eq $null) {exit 1}}"
+                    + '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")\n'
+                    + '[System.Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")\n'
+                    + f'$PKGPATH = "{os.path.dirname(self.pkgbuild)}"\n{hashtable}\n{found_function.content}'
+                )
 
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            executable=shutil.which('cmd') if PLATFORM == 'windows' else None,
-            stdout=subprocess.DEVNULL if supress_output else None,
-            stderr=subprocess.DEVNULL if supress_output else None,
-            cwd=self.get_cache_folder(),
-        )
+            powershell_cmd = "pwsh" if PWSH_AVAILABLE else "powershell"
+            command = f"{powershell_cmd} -File {file_command_path.resolve()}"
+
+            process = subprocess.Popen(
+                ["cmd", "/c", command],
+                stdout=subprocess.DEVNULL if supress_output else None,
+                stderr=subprocess.DEVNULL if supress_output else None,
+                cwd=self.get_cache_folder(),
+            )
 
         process.communicate()
 
@@ -203,12 +227,16 @@ class Package:
             print(f"[cyan]::[/] Checking")
         return self._run_pkgbuild_function("check", supress_output) == 0
 
-    def update(self, supress_output=False):
+    def update(self, supress_output=False, force=False):
         from rich import print
 
         if not supress_output:
             print(f"[cyan]::[/] Updating [cyan]{self.name}")
-        if self.check(supress_output) and "install" not in self.available_functions:
+        if (
+            not force
+            and self.check(supress_output)
+            and "install" not in self.available_functions
+        ):
             print(f"[yellow]::[/] {self.name} Already installed")
             return
         sources = self.fetch_sources()
@@ -217,12 +245,12 @@ class Package:
             print(f"[green]::[/] Successfully updated [cyan]{self.name}")
         return status
 
-    def install(self, supress_output=False):
+    def install(self, supress_output=False, force=False):
         from rich import print
 
         if not supress_output:
             print(f"[cyan]::[/] Installing [cyan]{self.name}")
-        if self.check(supress_output):
+        if not force and self.check(supress_output):
             print(f"[yellow]::[/] {self.name} Already installed")
             return
 
@@ -232,13 +260,13 @@ class Package:
             print(f"[green]::[/] Successfully installed [cyan]{self.name}")
         return status
 
-    def uninstall(self, supress_output=False):
+    def uninstall(self, supress_output=False, force=False):
         from rich import print
 
         if not supress_output:
             print(f"[cyan]::[/] Uninstalling [cyan]{self.name}")
 
-        if not self.check(supress_output):
+        if not force and not self.check(supress_output):
             print(f"[red]::[/] {self.name} is not installed. Cannot uninstall")
             return
 

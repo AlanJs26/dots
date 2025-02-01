@@ -17,16 +17,19 @@ from rich import print
 
 from archdots.package import get_packages
 from archdots.constants import HEALTH_FOLDER
+from archdots.package_manager import split_packages_by_pm
 
 
-all_packages = [
-    pkg for pkg in get_packages(HEALTH_FOLDER) if not pkg.check(supress_output=True)
-]
+health_scripts = get_packages(HEALTH_FOLDER)
+all_packages = [pkg for pkg in health_scripts if not pkg.check(supress_output=True)]
 
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
 
 if not all_packages:
-    print("there are any health scripts unconfigured")
+    if not health_scripts:
+        print("[yellow]there are any health scripts to configure")
+    else:
+        print("[green]all health scripts are configured!")
     exit()
 
 if args["name"]:
@@ -57,6 +60,12 @@ else:
     ]
 
 for pkg in selected_packages:
-    print(f'[cyan]:: [/]configuring "{pkg.name}"')
-    if not pkg.install():
+    print(f'[cyan]:: [/]Configuring "{pkg.name}"')
+
+    print(f"[yellow]:: [/]Installing dependencies")
+    for pm, deps in split_packages_by_pm(pkg.depends).items():
+        if deps := list(set(deps).difference(pm.get_installed(use_memo=True))):
+            pm.install(deps)
+
+    if not pkg.install(force=True):
         print(f'[red]:: [/] Failed to configure "{pkg.name}')

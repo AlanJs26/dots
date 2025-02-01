@@ -46,10 +46,10 @@ class Function(NamedTuple):
 class PackageTransformer(Transformer):
     def function(self, items):
         name, content = items
-        return Function(name, content)
+        return Function(name, content[1:-1])
 
     def content(self, content):
-        return " ".join([str(token) for token in content])
+        return "{" + " ".join([str(token) for token in content]) + "}"
 
     def NAME(self, content):
         return str(content)

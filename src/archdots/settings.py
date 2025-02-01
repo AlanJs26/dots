@@ -264,7 +264,10 @@ def iterdict_imports(
 
                 keeped_items = frozenset(freeze(v)).intersection(new_merged_items)
 
-                new_items = new_merged_items.difference(freeze(merged_config[k]))
+                if k in merged_config:
+                    new_items = new_merged_items.difference(freeze(merged_config[k]))
+                else:
+                    new_items = new_merged_items
 
                 current_config[k] = [*unfreeze(keeped_items), *unfreeze(new_items)]
 

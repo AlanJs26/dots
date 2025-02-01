@@ -26,7 +26,7 @@ all_packages = [
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
 
 if not all_packages:
-    print("there are any health scripts configured")
+    print("there are any health scripts to unconfigure")
     exit()
 
 if args["name"]:
@@ -37,6 +37,7 @@ if args["name"]:
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
     from simple_term_menu import TerminalMenu
+
     print("[cyan]:: [/]Choose health scripts to unconfigure")
 
     terminal_menu = TerminalMenu(

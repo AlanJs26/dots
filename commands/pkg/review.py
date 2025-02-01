@@ -10,8 +10,6 @@ args = args  # type: ignore
 from enum import Enum
 import itertools
 
-# import tty, termios, sys
-import sys
 from typing import NamedTuple
 from math import ceil
 
@@ -57,12 +55,12 @@ class _GetchUnix:
         import sys, tty, termios
 
         fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
+        old_settings = termios.tcgetattr(fd)  # type: ignore
         try:
-            tty.setraw(sys.stdin.fileno())
+            tty.setraw(sys.stdin.fileno())  # type: ignore
             ch = sys.stdin.read(1)
         finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)  # type: ignore
         return ch
 
 
@@ -124,18 +122,6 @@ class Row(NamedTuple):
     status: Status
 
 
-# def getchar():
-#     fd = sys.stdin.fileno()
-#     old_settings = termios.tcgetattr(fd)
-#     tty.setraw(sys.stdin.fileno())
-#     ch = sys.stdin.read(1)
-#     termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-#     # Exit on ctrl-c, ctrl-d, ctrl-z, or ESC
-#     if ord(ch) in [3, 4, 26, 27]:
-#         return ""
-#     return ch
-
-
 packages_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
 
@@ -145,8 +131,6 @@ unmanaged_packages: dict[str, list[str]] = {}
 
 if "pkgs" not in config:
     unmanaged_packages = packages_by_pm
-    # print("there is no pkgs configured", file=sys.stderr)
-    # exit()
 else:
     for pm in packages_by_pm:
         if pm not in config["pkgs"]:
@@ -230,8 +214,8 @@ def make_option(name: str, color="green"):
     return f"([{color}]{name[0]}[/]){name[1:]}"
 
 
-rows = rows[:11]
-
+# rows = rows[:11]
+#
 row_index = 0
 with Live(
     group, auto_refresh=False, vertical_overflow="visible", transient=True

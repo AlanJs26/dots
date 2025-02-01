@@ -51,10 +51,18 @@ while pkg_sources and Confirm.ask(
 all_packages = Custom().get_packages()
 
 print("[cyan]:: [/]Dependencies")
-print('dependencies are structured like "packagemanager:name". Ex:  apt:ping')
-print("if package manager prefix is empty, it will be considered a custom dependency")
-print("available custom dependencies: " + ", ".join(pkg.name for pkg in all_packages))
-print("available package managers: " + ", ".join(pm.name for pm in package_managers))
+print(
+    'dependencies are structured like "packagemanager:name". Ex:  apt:ping, custom:package'
+)
+print(
+    "available package managers: "
+    + ", ".join(f"[cyan]{pm.name}[/]" for pm in package_managers)
+)
+print(
+    "available custom dependencies: "
+    + ", ".join(f"[cyan]{pkg.name}[/]" for pkg in all_packages)
+)
+print("\nleave empty for no dependencies")
 
 pkg_dependencies = list(filter(str, [Prompt.ask("[cyan]dependency name")]))
 while pkg_dependencies and Confirm.ask(
@@ -85,7 +93,7 @@ url='{pkg_url.replace("'", "\\'")}'
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=({' '.join(f"'{source}'" for source in pkg_sources)})
 # make this package platform specific. Supported platforms: linux, windows 
-# platform='{PLATFORM}'
+platform='{PLATFORM}'
 
 # All items of source will be downloaded and extracted (when necessary)
 # all downloaded (or extracted folders) are stored inside ${{sourced[@]}}
@@ -126,4 +134,4 @@ if Confirm.ask(f"Add {pkg_name} as a managed package?", default=True):  # type: 
     save_config(config)
 
 if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
-    default_editor(Path(PACKAGES_FOLDER) / pkg_name / 'PKGBUILD')
+    default_editor(Path(PACKAGES_FOLDER) / pkg_name / "PKGBUILD")
