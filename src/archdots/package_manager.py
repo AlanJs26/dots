@@ -410,8 +410,69 @@ class Winget(PackageManager):
         return which("winget") is not None
 
 
+class Scoop(PackageManager):
+
+    def __init__(self) -> None:
+        super().__init__("scoop")
+
+    @transient_progress("scoop packages")
+    @memoize
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+        import json
+
+        process = subprocess.Popen(
+            f'powershell -Command "(scoop list 6> $null)|ConvertTo-Json"',
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            shell=True,
+            text=True,
+            encoding="cp437",
+        )
+
+        if not process.stdout:
+            if process.stderr:
+                err_console.print(process.stderr.read())
+            raise PackageManagerException("could not run 'scoop list'")
+
+        scoop_result = json.loads(process.stdout.read())
+
+        pkg_names = [result["Name"] for result in scoop_result]
+        custom_package_names = [
+            pkg.name for pkg in Custom().get_packages(use_memo=use_memo)
+        ]
+        return list(filter(lambda p: p not in custom_package_names, pkg_names))
+
+    def install(self, packages: list[str]) -> bool:
+        if not packages:
+            return True
+        from os import system
+
+        error_happened = False
+        for package in packages:
+            error_happened = error_happened or system(f'scoop install "{package}"') != 0
+        return not error_happened
+
+    def uninstall(self, packages: list[str]) -> bool:
+        if not packages:
+            return True
+        from os import system
+
+        error_happened = False
+        for package in packages:
+            error_happened = (
+                error_happened or system(f'scoop uninstall "{package}"') != 0
+            )
+        return not error_happened
+
+    def is_available(self) -> bool:
+        from shutil import which
+
+        return which("scoop") is not None
+
+
 package_managers: list[PackageManager] = list(
-    filter(lambda pm: pm.is_available(), [Pacman(), Custom(), Winget()])
+    filter(lambda pm: pm.is_available(), [Pacman(), Custom(), Winget(), Scoop()])
 )
 
 
