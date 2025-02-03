@@ -16,16 +16,14 @@ from math import ceil
 from archdots.constants import PLATFORM
 from archdots.package_manager import Custom, PackageManager, package_managers
 from archdots.settings import read_config, save_config
+from archdots.console import print_title, title, warn_console
 
 from rich.live import Live
 from rich.table import Table
 from rich.console import Group
 from rich.panel import Panel
 from rich import print
-from rich.console import Console
 from rich.prompt import Confirm
-
-warning_console = Console(style="yellow italic", stderr=True)
 
 
 class _Getch:
@@ -156,7 +154,7 @@ if "pkgs" in config and "custom" in config["pkgs"]:
 
 if not rows:
     if lost_packages:
-        warning_console.print(
+        warn_console.print(
             "Found packages that have been configured but aren't installed neither listed in config.yaml",
             "To remove this warning, delete those packages or add them to config.yaml\n",
             f'packages: {", ".join(lost_packages)}',
@@ -265,10 +263,10 @@ error_happened = False
 packages_to_uninstall = list(filter(lambda row: row.status == Status.UNINSTALLED, rows))
 
 if packages_to_uninstall:
-    print(
-        f'[cyan]::[/] about to uninstall the following packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_uninstall)}'
+    print_title(
+        f' about to uninstall the following packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_uninstall)}'
     )
-    if Confirm.ask("[cyan]::[/] Proceed?", default=True):
+    if Confirm.ask(title("Proceed?"), default=True):
         for pm_name, grouped_rows in itertools.groupby(
             packages_to_uninstall, lambda row: row.pm
         ):
@@ -294,13 +292,13 @@ if packages_to_add:
     print(f"[green]{len(packages_to_add)} packages added")
 
 if error_happened:
-    warning_console.print(
+    warn_console.print(
         f"\nSome packages exited with error on removal. Possibly the numbers above are not valid"
     )
 
 
 if lost_packages:
-    warning_console.print(
+    warn_console.print(
         "\nFound packages that have been configured but aren't installed neither listed in config.yaml",
         "To remove this warning, delete those packages or add them to config.yaml\n",
         f'packages: {", ".join(lost_packages)}',

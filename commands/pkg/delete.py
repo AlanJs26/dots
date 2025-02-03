@@ -13,6 +13,7 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
+from archdots.console import print_title, title
 from archdots.exceptions import PackageException
 from archdots.package_manager import Custom
 from rich import print
@@ -42,7 +43,7 @@ if args["name"]:
 else:
     from simple_term_menu import TerminalMenu
 
-    print("[cyan]:: [/]Choose packages to delete")
+    print_title("Choose packages to delete")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages],
@@ -61,7 +62,7 @@ else:
     ]
 
 if not Confirm.ask(
-    f'[cyan]:: [/]are you sure you want to delete {",".join(terminal_menu.chosen_menu_entries)}?', default=False  # type: ignore
+    title(f'are you sure you want to delete {",".join(terminal_menu.chosen_menu_entries)}?'), default=False  # type: ignore
 ):
     exit()
 

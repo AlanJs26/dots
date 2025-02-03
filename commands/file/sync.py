@@ -19,16 +19,15 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
 from archdots.settings import read_config
+from archdots.console import title
 
 
 def commit_changes():
     os.system("chezmoi git -- diff --cached --stat")
-    if Confirm.ask("[cyan]:: [/]push changes?", default=True):
+    if Confirm.ask(title("push changes?"), default=True):
         message = datetime.now().strftime("%d-%m-%y %H:%M:%S")
-        if not Confirm.ask(
-            f"[cyan]:: [/]use default message: {message}?", default=True
-        ):
-            while not (message := Prompt.ask("[cyan]:: [/]new message")):
+        if not Confirm.ask(title(f"use default message: {message}?"), default=True):
+            while not (message := Prompt.ask(title("new message"))):
                 pass
         os.system(f'chezmoi git -- commit -m "{message}"')
         os.system(f"chezmoi git push")

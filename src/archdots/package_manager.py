@@ -6,6 +6,7 @@ from archdots.exceptions import PackageManagerException, PackageException
 from archdots.package import get_packages, Package
 from archdots.settings import read_config
 from archdots.utils import memoize, SingletonMeta
+from archdots.console import err_console, transient_progress
 from archdots.constants import PACKAGES_FOLDER
 
 
@@ -185,6 +186,7 @@ class Custom(PackageManager):
     def get_packages(self, use_memo=False, ignore_platform=False) -> list[Package]:
         return get_packages(PACKAGES_FOLDER, ignore_platform)
 
+    @transient_progress("custom packages")
     @memoize
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         custom_packages = self.get_packages()
@@ -273,6 +275,7 @@ class Pacman(PackageManager):
         super().__init__("pacman")
         self.aur_helper = aur_helper
 
+    @transient_progress("pacman packages")
     @memoize
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         process = subprocess.Popen(
@@ -284,16 +287,18 @@ class Pacman(PackageManager):
             text=True,
             encoding="cp437",
         )
+
         if not process.stdout:
             if process.stderr:
-                print(process.stderr.read())
+                err_console.print(process.stderr.read())
             raise PackageManagerException("could not run 'pacman -Qe'")
 
-        installed = [line.strip() for line in process.stdout.readlines()]
-        custom_packages_names = [
+        pkg_names = [line.strip() for line in process.stdout.readlines()]
+
+        custom_package_names = [
             pkg.name for pkg in Custom().get_packages(use_memo=use_memo)
         ]
-        return list(filter(lambda p: p not in custom_packages_names, installed))
+        return list(filter(lambda p: p not in custom_package_names, pkg_names))
 
     def install(self, packages: list[str]) -> bool:
         if not packages:
@@ -334,6 +339,7 @@ class Winget(PackageManager):
     def __init__(self) -> None:
         super().__init__("winget")
 
+    @transient_progress("winget packages")
     @memoize
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         import json
@@ -347,22 +353,27 @@ class Winget(PackageManager):
             text=True,
             encoding="cp437",
         )
+
         if not process.stdout:
             if process.stderr:
-                print(process.stderr.read())
+                err_console.print(process.stderr.read())
             raise PackageManagerException("could not run 'winget list'")
 
         self.winget_result = json.loads(process.stdout.read())
-        installed = [result["Id"] for result in self.winget_result]
-        custom_packages_names = [
+
+        pkg_names = [result["Id"] for result in self.winget_result]
+        custom_package_names = [
             pkg.name for pkg in Custom().get_packages(use_memo=use_memo)
         ]
-        return list(filter(lambda p: p not in custom_packages_names, installed))
+        return list(filter(lambda p: p not in custom_package_names, pkg_names))
 
     def install(self, packages: list[str]) -> bool:
         if not packages:
             return True
         from os import system
+
+        if not self.winget_result:
+            self.get_installed()
 
         id_by_name = {r["Name"]: r["Id"] for r in self.winget_result}
 

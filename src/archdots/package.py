@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from archdots.constants import CACHE_FOLDER, PLATFORM, PLATFORM
 from archdots.utils import is_url_valid
 from archdots.exceptions import PackageException
+from archdots.console import print_title
 from pathlib import Path
 
 from shutil import which
@@ -221,58 +222,50 @@ class Package:
         return int(process.returncode)
 
     def check(self, supress_output=False):
-        from rich import print
-
         if not supress_output:
-            print(f"[cyan]::[/] Checking")
+            print_title(f"Checking")
         return self._run_pkgbuild_function("check", supress_output) == 0
 
     def update(self, supress_output=False, force=False):
-        from rich import print
-
         if not supress_output:
-            print(f"[cyan]::[/] Updating [cyan]{self.name}")
+            print_title(f"Updating [cyan]{self.name}")
         if (
             not force
             and self.check(supress_output)
             and "install" not in self.available_functions
         ):
-            print(f"[yellow]::[/] {self.name} Already installed")
+            print_title(f"{self.name} Already installed", color="yellow")
             return
         sources = self.fetch_sources()
         status = self._run_pkgbuild_function("update", supress_output, sources) == 0
         if status:
-            print(f"[green]::[/] Successfully updated [cyan]{self.name}")
+            print_title(f"Successfully updated [cyan]{self.name}", color="green")
         return status
 
     def install(self, supress_output=False, force=False):
-        from rich import print
-
         if not supress_output:
-            print(f"[cyan]::[/] Installing [cyan]{self.name}")
+            print_title(f"Installing [cyan]{self.name}")
         if not force and self.check(supress_output):
-            print(f"[yellow]::[/] {self.name} Already installed")
+            print_title(f"{self.name} Already installed", color="yellow")
             return
 
         sources = self.fetch_sources()
         status = self._run_pkgbuild_function("install", supress_output, sources) == 0
         if status:
-            print(f"[green]::[/] Successfully installed [cyan]{self.name}")
+            print_title(f"Successfully installed [cyan]{self.name}", color="green")
         return status
 
     def uninstall(self, supress_output=False, force=False):
-        from rich import print
-
         if not supress_output:
-            print(f"[cyan]::[/] Uninstalling [cyan]{self.name}")
+            print_title(f"Uninstalling [cyan]{self.name}")
 
         if not force and not self.check(supress_output):
-            print(f"[red]::[/] {self.name} is not installed. Cannot uninstall")
+            print_title(f"{self.name} is not installed. Cannot uninstall", color="red")
             return
 
         status = self._run_pkgbuild_function("uninstall", supress_output) == 0
         if status:
-            print(f"[green]::[/] Successfully uninstalled [cyan]{self.name}")
+            print_title(f"Successfully uninstalled [cyan]{self.name}", color="green")
         return status
 
     def get_cache_folder(self):

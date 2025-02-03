@@ -14,6 +14,7 @@ args = args  # type: ignore
 
 import sys
 from rich import print
+from archdots.console import print_title
 from archdots.package_manager import package_managers, Custom
 from archdots.settings import read_config
 
@@ -48,6 +49,6 @@ for name, pkgs in pending_packages.items():
         continue
     if args["filter"] and name not in args["filter"]:
         continue
-    print(f"[cyan]:: [/]{name}")
+    print_title(f"{name}")
     for pkg_name in pkgs:
         print(pkg_name)

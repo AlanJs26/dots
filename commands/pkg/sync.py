@@ -26,7 +26,7 @@ from archdots.package_manager import (
     split_packages_by_pm,
 )
 from archdots.settings import read_config
-from rich.console import Console
+from archdots.console import title, warn_console, print_title
 from rich.prompt import Confirm
 import importlib.util
 from pathlib import Path
@@ -49,8 +49,6 @@ config = read_config()
 if "pkgs" not in config:
     print("there is no pkgs configured", file=sys.stderr)
     exit()
-
-warning_console = Console(style="yellow italic", stderr=True)
 
 packages_by_pm: dict[str, list[str]] = {
     pm.name: pm.get_installed() for pm in package_managers
@@ -76,15 +74,15 @@ for pm in packages_by_pm:
     flatten_pending_packages.extend(f"{pm}:{pkg}" for pkg in pending_packages[pm])
 
 if all_obscured_packages:
-    warning_console.print(
+    warn_console.print(
         f'the packages {", ".join(all_obscured_packages)} were obscured by custom packages with same name. Consider removing them from your config'
     )
 
 if any(pkgs for pkgs in pending_packages.values()):
-    print(
-        f'[cyan]::[/] about to install the following pending packages: [cyan]{"  ".join(flatten_pending_packages)}'
+    print_title(
+        f'about to install the following pending packages: [cyan]{"  ".join(flatten_pending_packages)}'
     )
-    if Confirm.ask("[cyan]::[/] Proceed?", default=True):
+    if Confirm.ask(title("Proceed?"), default=True):
         for pm_name, packages in pending_packages.items():
             if not packages:
                 continue
@@ -98,7 +96,7 @@ for pm in config["pkgs"]:
     unmanaged_packages.extend(set(packages_by_pm[pm]) - set(config["pkgs"][pm]))
 
 if unmanaged_packages and Confirm.ask(
-    "[cyan]:: [/]there are unmanaged packages. Review?", default=True  # type: ignore
+    title("there are unmanaged packages. Review?"), default=True  # type: ignore
 ):
     path = Path(MODULE_PATH) / "commands/pkg/review.py"
     spec = importlib.util.spec_from_file_location(os.path.basename(path), path)
@@ -115,7 +113,7 @@ else:
         lost_packages = lost_packages.difference(config["pkgs"]["custom"])
 
     if lost_packages:
-        warning_console.print(
+        warn_console.print(
             "\nFound packages that have been configured but aren't installed neither listed in config.yaml",
             "To remove this warning, delete those packages or add them to config.yaml\n",
             f'packages: {", ".join(lost_packages)}',

@@ -7,6 +7,7 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
+from archdots.console import print_title
 from archdots.package import Package
 from archdots.package_manager import package_managers, are_custom_packages_valid, Custom
 from archdots.utils import default_editor
@@ -19,8 +20,8 @@ import os
 
 os.makedirs(PACKAGES_FOLDER, exist_ok=True)
 
-print(
-    "[cyan]:: [/]fill in all package informations. Fields suffixed with [red](*)[/] are mandatory"
+print_title(
+    "fill in all package informations. Fields suffixed with [red](*)[/] are mandatory"
 )
 
 while not (pkg_name := Prompt.ask("[cyan]package name [red](*)")):
@@ -50,7 +51,7 @@ while pkg_sources and Confirm.ask(
 
 all_packages = Custom().get_packages()
 
-print("[cyan]:: [/]Dependencies")
+print_title("Dependencies")
 print(
     'dependencies are structured like "packagemanager:name". Ex:  apt:ping, custom:package'
 )

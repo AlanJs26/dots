@@ -12,6 +12,7 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
+from archdots.console import print_title
 from archdots.utils import default_editor
 from rich import print
 from archdots.constants import HEALTH_FOLDER
@@ -28,7 +29,8 @@ if name:
     selected_package = packages_by_name[name]
 else:
     from simple_term_menu import TerminalMenu
-    print("[cyan]:: [/]Choose which heath script to edit")
+
+    print_title("Choose which heath script to edit")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages], show_search_hint=True

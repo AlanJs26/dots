@@ -15,6 +15,7 @@ args = args  # type: ignore
 
 from rich import print
 
+from archdots.console import print_title
 from archdots.package import get_packages
 from archdots.constants import HEALTH_FOLDER
 
@@ -38,7 +39,7 @@ if args["name"]:
 else:
     from simple_term_menu import TerminalMenu
 
-    print("[cyan]:: [/]Choose health scripts to unconfigure")
+    print_title("Choose health scripts to unconfigure")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages],
@@ -57,6 +58,6 @@ else:
     ]
 
 for pkg in selected_packages:
-    print(f'[cyan]:: [/]Unconfiguring "{pkg.name}"')
+    print_title(f'Unconfiguring "{pkg.name}"')
     if not pkg.uninstall():
-        print(f'[red]:: [/] Failed to unconfigure "{pkg.name}')
+        print_title(f'Failed to unconfigure "{pkg.name}', color="red")

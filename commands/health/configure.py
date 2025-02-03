@@ -15,6 +15,7 @@ args = args  # type: ignore
 
 from rich import print
 
+from archdots.console import print_title
 from archdots.package import get_packages
 from archdots.constants import HEALTH_FOLDER
 from archdots.package_manager import split_packages_by_pm
@@ -41,7 +42,7 @@ if args["name"]:
 else:
     from simple_term_menu import TerminalMenu
 
-    print("[cyan]:: [/]Choose health scripts to configure")
+    print_title("Choose health scripts to configure")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages],
@@ -60,12 +61,12 @@ else:
     ]
 
 for pkg in selected_packages:
-    print(f'[cyan]:: [/]Configuring "{pkg.name}"')
+    print_title(f'Configuring "{pkg.name}"')
 
-    print(f"[yellow]:: [/]Installing dependencies")
+    print_title(f"Installing dependencies", color="yellow")
     for pm, deps in split_packages_by_pm(pkg.depends).items():
         if deps := list(set(deps).difference(pm.get_installed(use_memo=True))):
             pm.install(deps)
 
     if not pkg.install(force=True):
-        print(f'[red]:: [/] Failed to configure "{pkg.name}')
+        print_title(f'Failed to configure "{pkg.name}', color="red")

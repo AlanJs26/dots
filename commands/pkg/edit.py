@@ -13,6 +13,7 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
+from archdots.console import print_title
 from archdots.utils import default_editor
 from archdots.package_manager import Custom
 
@@ -27,7 +28,8 @@ if name:
     selected_package = packages_by_name[name]
 else:
     from simple_term_menu import TerminalMenu
-    print("[cyan]:: [/]Choose which package to edit")
+
+    print_title("Choose which package to edit")
 
     terminal_menu = TerminalMenu(
         [pkg.name for pkg in all_packages], show_search_hint=True

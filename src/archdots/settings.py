@@ -5,6 +5,7 @@ import yaml
 from typing import Any
 
 from archdots.constants import CACHE_FOLDER, CONFIG_FOLDER, MODULE_PATH
+from archdots.console import warn_console
 from archdots.exceptions import SettingsException
 
 CONFIG_CACHE = Path(CACHE_FOLDER) / "config.yaml.cache"
@@ -151,10 +152,7 @@ def read_config(use_memo=True) -> dict[Any, Any]:
         with open(CONFIG_CACHE, "r") as f:
             cached_config = yaml.safe_load(f)
             if not isinstance(cached_config, dict):
-                from rich.console import Console
-
-                warning_console = Console(style="yellow italic", stderr=True)
-                warning_console.print("warning: invalid cached config.")
+                warn_console.print("warning: invalid cached config.")
             else:
                 return cached_config
 
