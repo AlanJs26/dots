@@ -32,5 +32,5 @@ os.system(
 cat <<EOF
 {yaml_config}
 EOF
-) |yq {args['input']} {extra_args}"""
+) |yq '{args['input']}' {extra_args}"""
 )
