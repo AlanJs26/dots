@@ -286,6 +286,9 @@ def save_config(data: Any):
     Save a modified config on default location
     """
 
+    if not data:
+        return
+
     merged_config = read_config(False)
 
     with open(Path(CONFIG_FOLDER) / "config.yaml", "r") as f:

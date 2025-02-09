@@ -41,28 +41,21 @@ if args["name"]:
             exit()
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
-    from simple_term_menu import TerminalMenu
+    import inquirer
 
-    print_title("Choose packages to delete")
-
-    terminal_menu = TerminalMenu(
-        [pkg.name for pkg in all_packages],
-        multi_select=True,
-        multi_select_select_on_accept=False,
-        multi_select_empty_ok=True,
-        show_multi_select_hint=True,
-    )
-    terminal_menu.show()
-
-    if not terminal_menu.chosen_menu_entries:
-        exit()
-
-    selected_packages = [
-        packages_by_name[pkg_name] for pkg_name in terminal_menu.chosen_menu_entries
+    questions = [
+        inquirer.Checkbox(
+            "result",
+            message="Choose packages to delete",
+            choices=[pkg.name for pkg in all_packages],
+        ),
     ]
+    answers = inquirer.prompt(questions) or exit()
 
-if not Confirm.ask(
-    title(f'are you sure you want to delete {",".join(terminal_menu.chosen_menu_entries)}?'), default=False  # type: ignore
+    selected_packages = [packages_by_name[pkg_name] for pkg_name in answers["result"]]
+
+if not selected_packages or not Confirm.ask(
+    title(f'are you sure you want to delete {",".join(pkg.name for pkg in selected_packages)}?'), default=False  # type: ignore
 ):
     exit()
 

@@ -212,8 +212,6 @@ def make_option(name: str, color="green"):
     return f"([{color}]{name[0]}[/]){name[1:]}"
 
 
-# rows = rows[:11]
-#
 row_index = 0
 with Live(
     group, auto_refresh=False, vertical_overflow="visible", transient=True
@@ -284,7 +282,7 @@ for pm_name, grouped_rows in itertools.groupby(packages_to_add, lambda row: row.
     pkgs = [row.pkg for row in grouped_rows]
     config["pkgs"][pm_name].extend(pkgs)
 
-    save_config(config)
+save_config(config)
 
 if packages_to_uninstall:
     print(f"[red]{len(packages_to_uninstall)} packages uninstalled")

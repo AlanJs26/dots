@@ -40,25 +40,22 @@ if args["name"]:
             exit()
     selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 else:
-    from simple_term_menu import TerminalMenu
+    import inquirer
 
-    print_title("Choose health scripts to configure")
+    questions = [
+        inquirer.Checkbox(
+            "result",
+            message="Choose health scripts to configure",
+            choices=[pkg.name for pkg in all_packages],
+        ),
+    ]
+    answers = inquirer.prompt(questions)
 
-    terminal_menu = TerminalMenu(
-        [pkg.name for pkg in all_packages],
-        multi_select=True,
-        multi_select_select_on_accept=False,
-        multi_select_empty_ok=True,
-        show_multi_select_hint=True,
-    )
-    terminal_menu.show()
-
-    if not terminal_menu.chosen_menu_entries:
+    if not answers:
         exit()
 
-    selected_packages = [
-        packages_by_name[pkg_name] for pkg_name in terminal_menu.chosen_menu_entries
-    ]
+    selected_packages = [packages_by_name[pkg_name] for pkg_name in answers["result"]]
+
 
 for pkg in selected_packages:
     print_title(f'Configuring "{pkg.name}"')

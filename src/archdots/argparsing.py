@@ -116,7 +116,7 @@ def build_argparser(
                 parser = ArgumentParser(prog=node.name)
             else:
                 parser = argparse_dict[parent_name_path]["subparser"].add_parser(
-                    node.name, help=node.name
+                    node.name, help="+"
                 )
 
             subparser = parser.add_subparsers(dest=node.name)

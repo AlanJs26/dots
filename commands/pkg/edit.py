@@ -27,18 +27,21 @@ if name:
         exit()
     selected_package = packages_by_name[name]
 else:
-    from simple_term_menu import TerminalMenu
+    import inquirer
 
-    print_title("Choose which package to edit")
+    questions = [
+        inquirer.List(
+            "result",
+            message="Choose which package to edit",
+            choices=[pkg.name for pkg in all_packages],
+        ),
+    ]
+    answer = inquirer.prompt(questions) or exit()
 
-    terminal_menu = TerminalMenu(
-        [pkg.name for pkg in all_packages], show_search_hint=True
+    selected_package = (
+        next(filter(lambda pkg: pkg.name == answer["result"], all_packages), None)
+        or exit()
     )
-    menu_entry_index = terminal_menu.show()
 
-    if not isinstance(menu_entry_index, int):
-        exit()
-
-    selected_package = all_packages[menu_entry_index]
 
 default_editor(selected_package.pkgbuild)
