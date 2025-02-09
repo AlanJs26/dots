@@ -3,7 +3,7 @@ name = "archdots"
 version = "0.1.0"
 description = "simple cli tool for managing dotfiles, packages and configuration scripts"
 readme = "README.md"
-requires-python = "==3.12.*"
+requires-python = ">=3.12"
 dependencies = [
     "argparse>=1.4.0",
     "dacite>=1.8.1",

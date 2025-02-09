@@ -96,9 +96,9 @@ def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
 
         if "import" in next_config:
             if isinstance(next_config["import"], str):
-                pending.append(next_config["import"])
+                pending.append(Path(CONFIG_FOLDER) / next_config["import"])
             else:
-                pending.extend(next_config["import"])
+                pending.extend((Path(CONFIG_FOLDER) / p) for p in next_config["import"])
 
     return False
 
