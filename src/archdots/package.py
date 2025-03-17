@@ -237,6 +237,9 @@ class Package:
             print_title(f"{self.name} Already installed", color="yellow")
             return
         sources = self.fetch_sources()
+        with open(Path(self.get_cache_folder()) / "sources.txt", "w") as f:
+            f.writelines(sources)
+
         status = self._run_pkgbuild_function("update", supress_output, sources) == 0
         if status:
             print_title(f"Successfully updated [cyan]{self.name}", color="green")
@@ -250,6 +253,9 @@ class Package:
             return
 
         sources = self.fetch_sources()
+        with open(Path(self.get_cache_folder()) / "sources.txt", "w") as f:
+            f.writelines(sources)
+
         status = self._run_pkgbuild_function("install", supress_output, sources) == 0
         if status:
             print_title(f"Successfully installed [cyan]{self.name}", color="green")
@@ -263,7 +269,12 @@ class Package:
             print_title(f"{self.name} is not installed. Cannot uninstall", color="red")
             return
 
-        status = self._run_pkgbuild_function("uninstall", supress_output) == 0
+        sources_txt = Path(self.get_cache_folder()) / "sources.txt"
+        sources = []
+        if os.path.isfile(sources_txt):
+            with open(sources_txt, "r") as f:
+                sources = [line.strip() for line in f.readlines()]
+        status = self._run_pkgbuild_function("uninstall", supress_output, sources) == 0
         if status:
             print_title(f"Successfully uninstalled [cyan]{self.name}", color="green")
         return status

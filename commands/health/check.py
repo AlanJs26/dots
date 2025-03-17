@@ -1,6 +1,12 @@
 """
 ARCHDOTS
 help: check the status of all health scripts
+arguments:
+  - name: name
+    required: false
+    type: str
+    nargs: "*"
+    help: script to check. Leave empty for all
 ARCHDOTS
 """
 
@@ -15,6 +21,15 @@ import os
 
 os.makedirs(HEALTH_FOLDER, exist_ok=True)
 packages = get_packages(HEALTH_FOLDER)
+
+packages_by_name = {pkg.name: pkg for pkg in packages}
+
+if args["name"]:
+    for name in args["name"]:
+        if name not in packages_by_name:
+            print(f'unknown health script "{name}"')
+            exit()
+    packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 
 for pkg in packages:
     status = pkg.check(supress_output=True)

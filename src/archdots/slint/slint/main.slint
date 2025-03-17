@@ -1,0 +1,42 @@
+import { Button, VerticalBox, ComboBox, ScrollView, ListView, CheckBox, TabWidget, HorizontalBox } from "std-widgets.slint";
+
+import { PackagesView, PackageManager } from "./PackagesView.slint";
+
+export { PackageManager }
+
+
+
+
+export component AppWindow inherits Window {
+
+    HorizontalLayout {
+        VerticalLayout {
+            width: 30px;
+            padding: 5px;
+            spacing: 5px;
+            Image {
+                source: @image-url("images/package.svg");
+                width: parent.width - 10px;
+                horizontal-alignment: center;
+            }
+
+            Image {
+                source: @image-url("images/filetext.svg");
+                width: parent.width - 10px;
+                horizontal-alignment: center;
+            }
+
+            Text {
+                vertical-stretch: 1;
+            }
+
+            Image {
+                source: @image-url("images/settings.svg");
+                width: parent.width - 10px;
+                horizontal-alignment: center;
+            }
+        }
+
+        packages_view := PackagesView {}
+    }
+}

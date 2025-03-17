@@ -1,0 +1,394 @@
+import { Button, VerticalBox, ComboBox, ScrollView, ListView, CheckBox, TabWidget, HorizontalBox } from "std-widgets.slint";
+
+import { Breadcrumb, BreadcrumbNumbered } from "./components.slint";
+import { Styles } from "components.slint";
+
+export struct Dependency {
+    name: string,
+    package_manager: string,
+    installed: bool,
+}
+export struct Package {
+    name: string,
+    description: string,
+    installed: bool,
+    managed: bool,
+    package_manager: string,
+    index: int,
+    url: string,
+    dependencies: [Dependency],
+}
+    
+export global PackageManager {
+    in property <[Package]> packages: [
+        {
+            name: "Package 1 isso eh um nome muito longo",
+            description: "Description 1",
+            installed: true,
+            managed: true,
+            index: 0,
+            package_manager: "winget",
+            url: "https://github.com",
+            dependencies: [
+                {
+                    name: "Dependency 1",
+                    package_manager: "winget",
+                    installed: false,
+                },
+                {
+                    name: "Dependency 2",
+                    package_manager: "winget",
+                    installed: true,
+                }
+            ]
+        },
+        {
+            name: "Package 2",
+            description: "Description 2",
+            installed: false,
+            managed: false,
+            index: 1,
+            package_manager: "custom",
+            url: "https://github.com"
+        },
+        {
+            name: "Package 3",
+            description: "Description 3",
+            installed: true,
+            managed: false,
+            index: 2,
+            package_manager: "pacman",
+            url: "https://github.com"
+        }
+    ];
+
+    in property <bool> installed_state: true;
+    in property <bool> managed_state: true;
+    in property <bool> winget_state: true;
+    in property <bool> custom_state: true;
+    in property <bool> pacman_state: true;
+    
+    in property <int> installed_num: 0;
+    in property <int> managed_num: 0;
+    
+    in property <int> filtered_length: 0;
+
+    callback update_packages();
+}
+
+component PackageEditorTab {
+    VerticalLayout {
+        HorizontalLayout {
+            Button {
+                text: "voltar";
+            }
+
+            Text {
+                text: "Pacote Personalizado";
+            }
+
+            Button {
+                text: "Salvar";
+            }
+        }
+
+        ComboBox {
+            model: ["Winget", "Scoop", "Custom"];
+        }
+
+        HorizontalLayout {
+            Text {
+                text: "Nome*";
+            }
+
+            TextInput {
+                text: "TextInput";
+            }
+        }
+
+        HorizontalLayout {
+            Text {
+                text: "Descrição*";
+            }
+
+            TextInput {
+                text: "TextInput";
+            }
+        }
+
+        HorizontalLayout {
+            Text {
+                text: "Url*";
+            }
+
+            TextInput {
+                text: "TextInput";
+            }
+        }
+
+        Text {
+            text: "Arquivos Externos";
+        }
+
+        VerticalLayout {
+            HorizontalLayout {
+                Text {
+                    text: "Fonte";
+                    width: 100px;
+                }
+
+                Text {
+                    text: "Caminho";
+                }
+            }
+
+            for data in [
+                ["Item 1", "Item 2"],
+                ["Item 3", "Item 4"],
+            ]: HorizontalLayout {
+                Text {
+                    text: data[0];
+                    width: 100px;
+                }
+
+                Text {
+                    text: data[1];
+                }
+
+                Button {
+                    width: 30px;
+                    text: "X";
+                }
+            }
+            HorizontalLayout {
+                ComboBox {
+                    width: 100px;
+                    model: ["Item 1", "Item 2"];
+                }
+
+                TextInput {
+                    text: "TextInput";
+                }
+
+                Button {
+                    width: 30px;
+                    text: "+";
+                }
+            }
+        }
+    }
+}
+
+component PackageHomeTab {
+    in property <Package> selected_pkg;
+    VerticalLayout {
+        Text {
+            text: selected_pkg.name;
+            font-size: 17pt;
+            height: 35px;
+        }
+
+        Text {
+            text: selected_pkg.description;
+            height: 35px;
+        }
+
+        Text {
+            text: "dependencias";
+            font-size: 7pt;
+            height: 18px;
+        }
+
+        HorizontalLayout {
+            spacing: 5px;
+            padding-bottom: 10px;
+            for dep in selected_pkg.dependencies: Breadcrumb {
+                text: dep.name;
+                interactive: false;
+                active: dep.installed;
+                inactive_color: red;
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 10px;
+            Button {
+                text: selected_pkg.installed ? "Desinstalar" : "Instalar";
+                // width: 80px;
+            }
+
+            CheckBox {
+                text: "Gerenciado";
+                horizontal-stretch: 1;
+                checked: selected_pkg.managed;
+            }
+
+            Button {
+                text: "Apagar";
+            }
+
+            Button {
+                text: "Editar";
+            }
+        }
+    }
+}
+
+export component PackagesView inherits Window {
+    out property <int> selected_index: 0;
+    out property <Package> selected_pkg: PackageManager.packages[0];
+    
+    HorizontalLayout {
+        VerticalLayout {
+            width: 200px;
+            VerticalLayout {
+                padding: 15px;
+                padding-left: 15px;
+                Button {
+                    text: "Sincronizar";
+                    clicked => {
+                        PackageManager.update_packages();
+                    }
+                }
+
+                Text {
+                    text: "Filtros - " + PackageManager.filtered_length + " pacotes";
+                    font-size: 7pt;
+                    height: 20px;
+                    vertical-alignment: center;
+                }
+
+                HorizontalLayout {
+                    BreadcrumbNumbered {
+                        number: PackageManager.installed_num;
+                        text: "Instalados";
+                        clicked => {
+                            PackageManager.installed_state = self.active;
+                            PackageManager.update_packages();
+                        }
+                    }
+
+                    BreadcrumbNumbered {
+                        number: PackageManager.managed_num;
+                        text: "Gerenciados";
+                        clicked => {
+                            PackageManager.managed_state = self.active;
+                            PackageManager.update_packages();
+                        }
+                    }
+
+                    spacing: 5px;
+                    padding-bottom: 10px;
+                }
+
+                HorizontalLayout {
+                    winget_bread := Breadcrumb {
+                        text: "winget";
+                        clicked => {
+                            PackageManager.winget_state = self.active;
+                            PackageManager.update_packages();
+                        }
+                    }
+
+                    custom_bread := Breadcrumb {
+                        text: "custom";
+                        clicked => {
+                            PackageManager.custom_state = self.active;
+                            PackageManager.update_packages();
+                        }
+                    }
+
+                    pacman_bread := Breadcrumb {
+                        text: "pacman";
+                        clicked => {
+                            PackageManager.pacman_state = self.active;
+                            PackageManager.update_packages();
+                        }
+                    }
+
+                    alignment: space-around;
+                    spacing: 5px;
+                    padding-bottom: 10px;
+                }
+
+                ScrollView {
+                    vertical-scrollbar-policy: always-on;
+                    ListView {
+                        for pkg in PackageManager.packages: Rectangle {
+                            border-color: black;
+
+                            TouchArea {
+                                clicked => {
+                                    selected_index = pkg.index;
+                                    selected_pkg = pkg;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                Text {
+                                    text: pkg.name;
+                                    horizontal-stretch: 1;
+                                    vertical-alignment: center;
+                                    wrap: word-wrap;
+                                    font-weight: pkg.index == selected_index ? 800 : 0;
+                                    color: pkg.index == selected_index ? Styles.primary_color : black;
+                                }
+
+                                GridLayout {
+                                    width: 25px;
+                                    Image {
+                                        visible: pkg.managed;
+                                        source: @image-url("images/bookmark.svg");
+                                        row: 0;
+                                        col: 1;
+                                    }
+
+                                    Image {
+                                        visible: pkg.installed;
+                                        source: @image-url("images/download.svg");
+                                        row: 0;
+                                        col: 0;
+                                    }
+
+                                    Text {
+                                        text: pkg.package-manager;
+                                        row: 1;
+                                        colspan: 2;
+                                        font-size: 5pt;
+                                    }
+                                }
+
+                                Text {
+                                    width: 5px;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Button {
+                text: "Novo Pacote";
+            }
+        }
+
+        TabWidget {
+            Tab {
+                title: "Home";
+                PackageHomeTab {
+                    selected_pkg: selected_pkg;
+                    width: 100%;
+                    height: 100%;
+                }
+            }
+
+            Tab {
+                title: "Second";
+                PackageEditorTab {
+                    width: 100%;
+                    height: 100%;
+                }
+            }
+        }
+    }
+}

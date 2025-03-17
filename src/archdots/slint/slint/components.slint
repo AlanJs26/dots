@@ -1,0 +1,106 @@
+
+export global Styles {
+    out property <color> primary_color: green;
+    out property <color> inactive_color: gray;
+}
+export component BreadcrumbNumbered {
+    in property <int> number;
+    in property <string> text;
+    out property <bool> active: true;
+    callback clicked;
+
+    TouchArea {
+        clicked => {
+            active = !active;
+            clicked();
+        }
+    }
+
+    height: 20px;
+    rect := Rectangle {
+        border-color: Styles.primary_color;
+        border-width: 1px;
+        border-radius: 5px;
+        HorizontalLayout {
+            padding-left: 5px;
+            padding-right: 5px;
+            num_txt := Text {
+                text: number + " ";
+                vertical-alignment: center;
+                color: Styles.primary_color;
+            }
+
+            divider := Rectangle {
+                width: 1px;
+                height: 20px;
+                background: Styles.primary_color;
+            }
+
+            txt := Text {
+                vertical-alignment: center;
+                text: " " + text;
+                color: Styles.primary_color;
+                font-size: 7pt;
+            }
+        }
+    }
+
+    states [
+        active when active: {
+            rect.border-color: Styles.primary_color;
+            divider.background: Styles.primary_color;
+            txt.color: Styles.primary_color;
+            num_txt.color: Styles.primary_color;
+        }
+        inactive when !active: {
+            rect.border-color: Styles.inactive_color;
+            divider.background: Styles.inactive_color;
+            txt.color: Styles.inactive_color;
+            num_txt.color: Styles.inactive_color;
+        }
+    ]
+}
+
+export component Breadcrumb {
+    in property <string> text;
+    in property <bool> interactive: true;
+    in-out property <bool> active: true;
+    in property <color> active_color: Styles.primary_color;
+    in property <color> inactive_color: Styles.inactive_color;
+    callback clicked;
+
+    height: 17px;
+    width: child.width + 10px;
+
+    TouchArea {
+        clicked => {
+            if interactive {
+                active = !active;
+            }
+            clicked();
+        }
+    }
+
+    rect := Rectangle {
+        border-width: 1px;
+        border-radius: 5px;
+        child := Text {
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            text: text;
+            font-size: 7pt;
+        }
+
+    }
+
+    states [
+        active when active: {
+            rect.border-color: active_color;
+            child.color: active_color;
+        }
+        inactive when !active: {
+            rect.border-color: inactive_color;
+            child.color: inactive_color;
+        }
+    ]
+}

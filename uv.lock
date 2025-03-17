@@ -1,5 +1,5 @@
 version = 1
-requires-python = "==3.12.*"
+requires-python = ">=3.12"
 
 [[package]]
 name = "ansicon"
@@ -23,6 +23,7 @@ dependencies = [
     { name = "pyside6" },
     { name = "pyyaml" },
     { name = "rich" },
+    { name = "slint" },
 ]
 
 [package.metadata]
@@ -35,6 +36,7 @@ requires-dist = [
     { name = "pyside6", specifier = "==6.8.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "rich", specifier = ">=13.9.4" },
+    { name = "slint", specifier = ">=1.9.2a1" },
 ]
 
 [[package]]
@@ -215,6 +217,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c9/1f/4f998c900485e5c0ef43838363ba4a9723ac0ad73a9dc42068b12aaba4e4/PyYAML-6.0.2-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:8b9c7197f7cb2738065c481a0461e50ad02f18c78cd75775628afb4d7137fb3b", size = 756611 },
     { url = "https://files.pythonhosted.org/packages/df/d1/f5a275fdb252768b7a11ec63585bc38d0e87c9e05668a139fea92b80634c/PyYAML-6.0.2-cp312-cp312-win32.whl", hash = "sha256:ef6107725bd54b262d6dedcc2af448a266975032bc85ef0172c5f059da6325b4", size = 140591 },
     { url = "https://files.pythonhosted.org/packages/0c/e8/4f648c598b17c3d06e8753d7d13d57542b30d56e6c2dedf9c331ae56312e/PyYAML-6.0.2-cp312-cp312-win_amd64.whl", hash = "sha256:7e7401d0de89a9a855c839bc697c079a4af81cf878373abd7dc625847d25cbd8", size = 156338 },
+    { url = "https://files.pythonhosted.org/packages/ef/e3/3af305b830494fa85d95f6d95ef7fa73f2ee1cc8ef5b495c7c3269fb835f/PyYAML-6.0.2-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:efdca5630322a10774e8e98e1af481aad470dd62c3170801852d752aa7a783ba", size = 181309 },
+    { url = "https://files.pythonhosted.org/packages/45/9f/3b1c20a0b7a3200524eb0076cc027a970d320bd3a6592873c85c92a08731/PyYAML-6.0.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:50187695423ffe49e2deacb8cd10510bc361faac997de9efef88badc3bb9e2d1", size = 171679 },
+    { url = "https://files.pythonhosted.org/packages/7c/9a/337322f27005c33bcb656c655fa78325b730324c78620e8328ae28b64d0c/PyYAML-6.0.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0ffe8360bab4910ef1b9e87fb812d8bc0a308b0d0eef8c8f44e0254ab3b07133", size = 733428 },
+    { url = "https://files.pythonhosted.org/packages/a3/69/864fbe19e6c18ea3cc196cbe5d392175b4cf3d5d0ac1403ec3f2d237ebb5/PyYAML-6.0.2-cp313-cp313-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:17e311b6c678207928d649faa7cb0d7b4c26a0ba73d41e99c4fff6b6c3276484", size = 763361 },
+    { url = "https://files.pythonhosted.org/packages/04/24/b7721e4845c2f162d26f50521b825fb061bc0a5afcf9a386840f23ea19fa/PyYAML-6.0.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:70b189594dbe54f75ab3a1acec5f1e3faa7e8cf2f1e08d9b561cb41b845f69d5", size = 759523 },
+    { url = "https://files.pythonhosted.org/packages/2b/b2/e3234f59ba06559c6ff63c4e10baea10e5e7df868092bf9ab40e5b9c56b6/PyYAML-6.0.2-cp313-cp313-musllinux_1_1_aarch64.whl", hash = "sha256:41e4e3953a79407c794916fa277a82531dd93aad34e29c2a514c2c0c5fe971cc", size = 726660 },
+    { url = "https://files.pythonhosted.org/packages/fe/0f/25911a9f080464c59fab9027482f822b86bf0608957a5fcc6eaac85aa515/PyYAML-6.0.2-cp313-cp313-musllinux_1_1_x86_64.whl", hash = "sha256:68ccc6023a3400877818152ad9a1033e3db8625d899c72eacb5a668902e4d652", size = 751597 },
+    { url = "https://files.pythonhosted.org/packages/14/0d/e2c3b43bbce3cf6bd97c840b46088a3031085179e596d4929729d8d68270/PyYAML-6.0.2-cp313-cp313-win32.whl", hash = "sha256:bc2fa7c6b47d6bc618dd7fb02ef6fdedb1090ec036abab80d4681424b84c1183", size = 140527 },
+    { url = "https://files.pythonhosted.org/packages/fa/de/02b54f42487e3d3c6efb3f89428677074ca7bf43aae402517bc7cca949f3/PyYAML-6.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:8388ee1976c416731879ac16da0aff3f63b286ffdd57cdeb95f3f2e085687563", size = 156446 },
 ]
 
 [[package]]
@@ -269,6 +280,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050 },
+]
+
+[[package]]
+name = "slint"
+version = "1.9.2a1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/67/f5277477ddfe5cc9478d563299f61847dfe6ce14023d7a82b7a319208a19/slint-1.9.2a1.tar.gz", hash = "sha256:8a4fe8437f7dd37c3555a08ba9879b0bc83b67dde894143ce9e60e6a9bad3b04", size = 1809577 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/73/ab/75ffab4dc5ba816530fb70e8e2fd9edfecb73c4e0ae74abf89b6e0309393/slint-1.9.2a1-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:496c8f53799e781ffe8da8db89a076fa750151012efe923d6feba077ff1de378", size = 11464541 },
+    { url = "https://files.pythonhosted.org/packages/ac/ab/7693aad5be978093a0cc7b0501717d1c2daf637a9490fa70bb2907a63758/slint-1.9.2a1-cp310-abi3-macosx_11_0_x86_64.whl", hash = "sha256:a7a90e644d7bd76e11405914a5ab08baa1f923f6f4760658e4d51b278e1ac270", size = 11958948 },
+    { url = "https://files.pythonhosted.org/packages/09/2a/b992ef959acc4d6213a7f632f608cdff6a9254b25125fbe6917557d63e77/slint-1.9.2a1-cp310-abi3-manylinux_2_31_aarch64.whl", hash = "sha256:6af53638b337a7c9720e2eb0a916b0f27537e76c4361764d7c8c2a0df8fc107e", size = 15947395 },
+    { url = "https://files.pythonhosted.org/packages/29/e6/1ce6c72ad8daea307b9e4f4b308d3fb08d9c52f6fbeb9cd68b00230a3cb9/slint-1.9.2a1-cp310-abi3-manylinux_2_31_armv7l.whl", hash = "sha256:f575e393ea309a0ef1b080d3bcb3efb5e454cafbf5ba93d0a1cd94043ab47fbc", size = 15687660 },
+    { url = "https://files.pythonhosted.org/packages/b6/e9/6b6ae61e33e1468d2958414cc00930c0475e7ab4c7f83294e7e9e69fc214/slint-1.9.2a1-cp310-abi3-manylinux_2_35_x86_64.whl", hash = "sha256:ac298004c22bbfb2b09894c64ece2717af4f3b38194269330089cc10f6bdee9f", size = 16627207 },
+    { url = "https://files.pythonhosted.org/packages/91/38/9700ec975fa32cf1767e57b1fe02962fa3fe2d54ea3a474a644612ccf2b8/slint-1.9.2a1-cp310-abi3-win_amd64.whl", hash = "sha256:100693ec2f3d342d04f135a9f073d5686eb2f4f5eaba75c8039e7b2b0cd6f815", size = 12145976 },
 ]
 
 [[package]]

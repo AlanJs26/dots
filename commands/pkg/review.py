@@ -262,7 +262,7 @@ packages_to_uninstall = list(filter(lambda row: row.status == Status.UNINSTALLED
 
 if packages_to_uninstall:
     print_title(
-        f' about to uninstall the following packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_uninstall)}'
+        f'about to uninstall the following packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_uninstall)}'
     )
     if Confirm.ask(title("Proceed?"), default=True):
         for pm_name, grouped_rows in itertools.groupby(

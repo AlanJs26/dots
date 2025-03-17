@@ -204,7 +204,7 @@ class Custom(PackageManager):
         )
 
         for pm in ext_dependencies_by_pm:
-            if pm.name == "custom":
+            if pm.name == self.name:
                 continue
             # filter out dependencies that are already installed
             deps = set(ext_dependencies_by_pm[pm]).difference(
@@ -238,15 +238,15 @@ class Custom(PackageManager):
             if (
                 package not in filtered_packages
                 and "pkgs" in config
-                and "custom" in config["pkgs"]
-                and package.name in config["pkgs"]["custom"]
+                and self.name in config["pkgs"]
+                and package.name in config["pkgs"][self.name]
                 or not package.check(True)
             ):
                 continue
             package.uninstall()
 
         for pm in ext_dependencies_by_pm:
-            if pm.name == "custom":
+            if pm.name == self.name:
                 continue
             # only try to remove installed dependencies
             deps = list(
@@ -254,9 +254,35 @@ class Custom(PackageManager):
                     pm.get_installed(by_user=False)
                 )
             )
+            # do not uninstall dependencies that are marked as managed
             if "pkgs" in config and pm.name in config["pkgs"]:
-                # do not uninstall dependencies that are marked as managed
-                deps = list(set(deps).difference(config["pkgs"][pm.name]))
+                pm_managed_pkgs = config["pkgs"][pm.name]
+
+                deps = list(set(deps).difference(pm_managed_pkgs))
+
+                if pm.name == Pacman().name:
+                    for dep in deps.copy():
+                        process = subprocess.Popen(
+                            f"LC_ALL=en_US pacman -Qii {dep}|grep 'Required By'",
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL,
+                            stdin=subprocess.PIPE,
+                            shell=True,
+                            text=True,
+                        )
+                        if not process.stdout:
+                            continue
+                        stdout = process.stdout.read()
+                        required_by = stdout.split(":")
+                        if len(required_by) != 2:
+                            continue
+                        required_by = [
+                            item.strip() for item in required_by[1].split("  ")
+                        ]
+
+                        if set(required_by).intersection(pm_managed_pkgs):
+                            deps.remove(dep)
+
             if not deps:
                 continue
             error_happened = not pm.uninstall(deps) or error_happened
