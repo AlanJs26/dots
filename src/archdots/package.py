@@ -25,6 +25,7 @@ class Package:
     pkgbuild: str
     available_functions: list[str]
     platform: str = "linux"
+    source_on_check: bool = False
 
     def __post_init__(self):
         if not self.name or not self.description:
@@ -63,7 +64,7 @@ class Package:
 
             # download github directories as zip
             github_regex = re.compile(
-                r"(https?:\/\/)?github\.com\/(?P<user>[^\/]+?)\/(?P<repo>[^\/]+?)\/?$"
+                r"(https?:\/\/)?github\.com\/(?P<user>[^\/]+?)\/(?P<repo>[^\/]+?)(\.git)?\/?$"
             )
             if match := re.match(github_regex, source):
                 source = f'https://api.github.com/repos/{match.group("user")}/{match.group("repo")}/zipball'
@@ -224,7 +225,16 @@ class Package:
     def check(self, supress_output=False):
         if not supress_output:
             print_title(f"Checking")
-        return self._run_pkgbuild_function("check", supress_output) == 0
+
+        if self.source_on_check:
+            sources = self.fetch_sources()
+            os.makedirs(self.get_cache_folder(), exist_ok=True)
+            with open(Path(self.get_cache_folder()) / "sources.txt", "w") as f:
+                f.writelines(sources)
+        else:
+            sources = []
+
+        return self._run_pkgbuild_function("check", supress_output, sources) == 0
 
     def update(self, supress_output=False, force=False):
         if not supress_output:
@@ -311,7 +321,7 @@ def parse_package_bash(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[
         "source",
         "url",
     ]
-    optional_fields = ["platform"]
+    optional_fields = ["platform", "source_on_check"]
     known_funcs = [
         "check",
         "install",

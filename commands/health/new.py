@@ -79,6 +79,7 @@ description='{pkg_description.replace("'", "'\"'\"'")}'
 url=''
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=()
+# source_on_check=false
 # make this health script platform specific. Supported platforms: linux, windows 
 platform='{PLATFORM}'
 

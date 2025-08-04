@@ -1,6 +1,10 @@
 """
 ARCHDOTS
 help: configure health scripts
+flags:
+  - long: --all
+    type: bool
+    help: configure all
 arguments:
   - name: name
     required: false
@@ -22,23 +26,26 @@ from archdots.package_manager import split_packages_by_pm
 
 
 health_scripts = get_packages(HEALTH_FOLDER)
-all_packages = [pkg for pkg in health_scripts if not pkg.check(supress_output=True)]
+checked_scripts = [pkg for pkg in health_scripts if not pkg.check(supress_output=True)]
 
-packages_by_name = {pkg.name: pkg for pkg in all_packages}
+scripts_by_name = {pkg.name: pkg for pkg in checked_scripts}
+all_scripts_by_name = {pkg.name: pkg for pkg in health_scripts}
 
-if not all_packages:
+if not checked_scripts:
     if not health_scripts:
         print("[yellow]there are any health scripts to configure")
-    else:
+        exit()
+    elif not args["name"]:
         print("[green]all health scripts are configured!")
-    exit()
 
-if args["name"]:
+if args["all"]:
+    selected_scripts = checked_scripts
+elif args["name"]:
     for name in args["name"]:
-        if name not in packages_by_name:
+        if name not in all_scripts_by_name:
             print(f'unknown health script "{name}"')
             exit()
-    selected_packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
+    selected_scripts = [all_scripts_by_name[pkg_name] for pkg_name in args["name"]]
 else:
     import inquirer
 
@@ -46,7 +53,7 @@ else:
         inquirer.Checkbox(
             "result",
             message="Choose health scripts to configure",
-            choices=[pkg.name for pkg in all_packages],
+            choices=[pkg.name for pkg in checked_scripts],
         ),
     ]
     answers = inquirer.prompt(questions)
@@ -54,10 +61,10 @@ else:
     if not answers:
         exit()
 
-    selected_packages = [packages_by_name[pkg_name] for pkg_name in answers["result"]]
+    selected_scripts = [scripts_by_name[pkg_name] for pkg_name in answers["result"]]
 
 
-for pkg in selected_packages:
+for pkg in selected_scripts:
     print_title(f'Configuring "{pkg.name}"')
 
     print_title(f"Installing dependencies", color="yellow")
