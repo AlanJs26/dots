@@ -24,7 +24,11 @@ ParserDict = dict[str, tuple[Path, ArgumentParser]]
 
 
 def parser_from_metadata(name: str, metadata: Metadata, subparser: _SubParsersAction):
-    parser = subparser.add_parser(name, help=metadata.help)
+    is_hidden = name.startswith("_")
+    if is_hidden:
+        parser = subparser.add_parser(name)
+    else:
+        parser = subparser.add_parser(name, help=metadata.help)
 
     argument: Flag | Argument
     for argument in [*metadata.arguments, *metadata.flags]:
@@ -155,6 +159,18 @@ def build_argparser(
 
             parser_dict[name_path] = (node.path, parser)
             argparse_dict[parent_name_path]["parsers"].append(parser)
+
+            argparse_dict[parent_name_path]["subparser"].metavar = (
+                "{"
+                + ",".join(
+                    [
+                        parser.prog.split()[-1]
+                        for parser in argparse_dict[parent_name_path]["parsers"]
+                        if not parser.prog.split()[-1].startswith("_")
+                    ]
+                )
+                + "}"
+            )
 
         visited_nodes.append(node)
         node_history.pop()

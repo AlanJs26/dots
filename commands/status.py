@@ -1,6 +1,6 @@
 """
 ARCHDOTS
-help: show status of files and packages
+help: overview of files and packages
 ARCHDOTS
 """
 
@@ -10,12 +10,28 @@ args = args  # type: ignore
 from rich import print
 from archdots.package_manager import package_managers, Custom
 from archdots.settings import read_config
+import subprocess
 
 installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 
 custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
 
 config = read_config()
+
+
+def run(text: str):
+    process = subprocess.Popen(
+        text,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        shell=True,
+        text=True,
+        encoding="cp437",
+    )
+    stdout, _ = process.communicate()
+    return stdout
+
 
 if "pkgs" not in config:
     config["pkgs"] = {}
@@ -67,3 +83,25 @@ print_aligned("managed", managed_packages)
 print_aligned("unmanaged", unmanaged_packages)
 print_aligned("pending", pending_packages)
 print_aligned("lost", lost_packages)
+
+stdout = run("chezmoi managed")
+managed_files = len(stdout.splitlines())
+
+stdout = run(
+    r"""
+from_git="$(chezmoi git -- diff --cached --numstat | awk '{print $3}' | rg 'dot_' -r '.' --passthrough | sed 's/private_|executable_//g')"
+from_chezmoi="$(chezmoi diff | rg 'diff --git' | rg 'a/(.+) b/' -o -r '$1')"
+
+echo -e "$from_git\n$from_chezmoi" | awk NF | sort -u
+    """
+)
+pending_files = len(stdout.splitlines())
+
+stdout = run("chezmoi unmanaged")
+unmanaged_files = len(stdout.splitlines())
+
+
+print("[cyan]::[/] Files")
+print_aligned("managed", managed_files)
+print_aligned("unmanaged", unmanaged_files)
+print_aligned("pending", pending_files)

@@ -1,15 +1,6 @@
 """
 ARCHDOTS
 help: sync packages
-flags:
-    - long: --install
-      type: str
-      nargs: +
-      help: try to install package, independently of managed state
-    - long: --uninstall
-      type: str
-      nargs: +
-      help: try to uninstall package, independently of managed state
 ARCHDOTS
 """
 
@@ -19,30 +10,13 @@ args = args  # type: ignore
 import sys
 from rich import print
 from archdots.constants import MODULE_PATH
-from archdots.package_manager import (
-    PackageManager,
-    package_managers,
-    Custom,
-    split_packages_by_pm,
-)
+from archdots.package_manager import PackageManager, package_managers, Custom
 from archdots.settings import read_config
 from archdots.console import title, warn_console, print_title
 from rich.prompt import Confirm
 import importlib.util
 from pathlib import Path
 import os
-
-if args["install"]:
-    pkgs_by_pm = split_packages_by_pm(args["install"])
-    for pm, pkgs in pkgs_by_pm.items():
-        pm.install(pkgs)
-if args["uninstall"]:
-    pkgs_by_pm = split_packages_by_pm(args["uninstall"])
-    for pm, pkgs in pkgs_by_pm.items():
-        pm.uninstall(pkgs)
-
-if args["install"] or args["uninstall"]:
-    exit()
 
 config = read_config()
 

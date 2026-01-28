@@ -1,6 +1,6 @@
 """
 ARCHDOTS
-help: opens a cli to decide what to do with unmanaged packages. add, uninstall or skip
+help: opens a tui to decide what to do with unmanaged packages. add, uninstall or skip
 ARCHDOTS
 """
 

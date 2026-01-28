@@ -73,36 +73,42 @@ config = read_config()
 
 
 with Progress() as progress:
+    task = progress.add_task("Re-adding chezmoi files", total=None)
+    run_and_wait(commands["re-add"])
+    progress.update(task, completed=1, total=1)
 
-    def chezmoi_add_thread(task: TaskID, file: str):
+    def chezmoi_forget_thread(task: TaskID, file: str):
         progress.update(task, advance=1, description=f"forgetting {file}")
         run_and_wait(f'chezmoi forget --force "{os.path.expanduser(file)}"')
+
+    def chezmoi_add_thread(task: TaskID, file: str):
         progress.update(task, advance=1, description=f"adding {file}")
         run_and_wait(f'chezmoi add --force "{os.path.expanduser(file)}"')
 
     if "chezmoi" in config and isinstance(config["chezmoi"], list):
         task = progress.add_task(
-            "adding configured chezmoi files", total=len(config["chezmoi"]) * 2 + 1
+            "forgettting configured chezmoi files", total=len(config["chezmoi"])
         )
         with ThreadPoolExecutor(max_workers=4) as pool:
             for file in config["chezmoi"]:
-                pool.submit(chezmoi_add_thread, task, file)
+                pool.submit(chezmoi_forget_thread, task, file)
 
-    task = progress.add_task("Re-adding chezmoi files", total=None)
-    run_and_wait(commands["re-add"])
-    progress.update(task, completed=1, total=1)
-
-    task = progress.add_task("adding git files", total=None)
-    run_and_wait(commands["git add"])
-    progress.update(task, completed=1, total=1)
-
-    task = progress.add_task("running 'chezmoi update'", total=None)
-    run_and_wait(commands["chezmoi update"])
-    progress.update(task, completed=1, total=1)
+        task = progress.add_task(
+            "adding configured chezmoi files", total=len(config["chezmoi"]) + 1
+        )
+        # with ThreadPoolExecutor(max_workers=4) as pool:
+        for file in config["chezmoi"]:
+            progress.update(task, advance=1, description=f"adding {file}")
+            run_and_wait(f'chezmoi add --force "{os.path.expanduser(file)}"')
+            # pool.submit(chezmoi_add_thread, task, file)
 
     task = progress.add_task("adding git files", total=None)
     run_and_wait(commands["git add"])
     progress.update(task, completed=1, total=1)
+
+    # task = progress.add_task("running 'chezmoi update'", total=None)
+    # run_and_wait(commands["chezmoi update"])
+    # progress.update(task, completed=1, total=1)
 
 os.system("chezmoi git -- diff --cached --stat")
 
