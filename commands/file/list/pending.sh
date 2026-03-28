@@ -12,21 +12,10 @@ flags:
   - long: --level
     type: int
     help: sets tree view max depth level
-  - long: --fast
-    type: bool
-    help: do not distinguish folders from files in tree view
   - long: --tree
     type: bool
     help: display folders as a tree
 ARCHDOTS
-
-function trailing_slash() {
-  if [[ -z "${args[fast]}" ]]; then
-    cat </dev/stdin | xargs -i sh -c '[ "$(file --brief "$HOME/{}")" = "directory" ]&&echo "{}/"||echo {}'
-  else
-    cat </dev/stdin
-  fi
-}
 
 get_level() {
   if [[ -n "${args[level]}" ]]; then
@@ -40,10 +29,10 @@ show_pending() {
   from_git="$(chezmoi git -- diff --cached --numstat | awk '{print $3}' | rg 'dot_' -r '.' --passthrough | sed 's/private_|executable_//g')"
   from_chezmoi="$(chezmoi diff | rg 'diff --git' | rg 'a/(.+) b/' -o -r '$1')"
 
-  pending="$(echo -e "$from_git\n$from_chezmoi" | awk NF | sort -u)"
+  pending="$(echo -e "$from_git\n$from_chezmoi" | awk '{print "~/"$0}' | sort -u)"
 
   if [[ ${args[tree]} -eq 1 ]]; then
-    tree -L $(get_level) --fromfile <(cat <<<"$pending" | trailing_slash)
+    cat <<<"$pending" | tree -a -L $(get_level) --fromfile . --dirsfirst
   else
     cat <<<"$pending"
   fi

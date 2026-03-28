@@ -280,6 +280,7 @@ def run_command(args: Namespace, metadata_dict: MetadataDict, parser_dict: Parse
         bashdict = ""
         for key, value in args_dict.items():
             bashdict += f'["{key}"]={parse_value(value)} '
+        print(bashdict)
         bashdict = "declare -A args=(" + bashdict.strip() + ")"
 
         command = f'ARCHDOTS="python {os.path.join(MODULE_PATH, "runner.py")}"\n'

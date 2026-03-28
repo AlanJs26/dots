@@ -97,11 +97,7 @@ echo -e "$from_git\n$from_chezmoi" | awk NF | sort -u
 )
 pending_files = len(stdout.splitlines())
 
-stdout = run("chezmoi unmanaged")
-unmanaged_files = len(stdout.splitlines())
-
 
 print("[cyan]::[/] Files")
 print_aligned("managed", managed_files)
-print_aligned("unmanaged", unmanaged_files)
 print_aligned("pending", pending_files)

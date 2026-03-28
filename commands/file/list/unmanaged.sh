@@ -12,21 +12,10 @@ flags:
   - long: --level
     type: int
     help: sets tree view max depth level
-  - long: --fast
-    type: bool
-    help: do not distinguish folders from files in tree view
   - long: --tree
     type: bool
     help: display folders as a tree
 ARCHDOTS
-
-function trailing_slash() {
-  if [[ -z "${args[fast]}" ]]; then
-    cat </dev/stdin | xargs -i sh -c '[ "$(file --brief "$HOME/{}")" = "directory" ]&&echo "{}/"||echo {}'
-  else
-    cat </dev/stdin
-  fi
-}
 
 get_level() {
   if [[ -n "${args[level]}" ]]; then
@@ -41,7 +30,7 @@ show_unmanaged() {
   # data=$(echo $data|sed "s:$HOME/::")
 
   if [[ ${args[tree]} -eq 1 ]]; then
-    tree -L $(get_level) --fromfile <(chezmoi unmanaged $data | trailing_slash)
+    chezmoi unmanaged $data | tree -a -L $(get_level) --fromfile . --dirsfirst
   else
     chezmoi unmanaged $data
   fi
