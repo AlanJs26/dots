@@ -164,6 +164,7 @@ def read_config(use_memo=True) -> dict[Any, Any]:
     _config_memo = {**default_config, **config}
     _last_mtime = config_path.lstat().st_mtime
 
+    os.makedirs(CACHE_FOLDER)
     with open(CONFIG_CACHE, "w") as f:
         yaml.safe_dump(_config_memo, f)
 

@@ -6,7 +6,7 @@ from archdots.exceptions import PackageManagerException, PackageException
 from archdots.package import get_packages, Package
 from archdots.settings import read_config
 from archdots.utils import memoize, SingletonMeta
-from archdots.console import err_console, transient_progress
+from archdots.console import err_console, progress_decorator
 from archdots.constants import PACKAGES_FOLDER
 
 
@@ -15,7 +15,7 @@ class PackageManager(metaclass=SingletonMeta):
         self.name = name
 
     @abstractmethod
-    def install(self, packages: list[str]) -> bool:
+    def install(self, packages: list[str], force=False) -> bool:
         raise NotImplemented
 
     @abstractmethod
@@ -186,14 +186,14 @@ class Custom(PackageManager):
     def get_packages(self, use_memo=False, ignore_platform=False) -> list[Package]:
         return get_packages(PACKAGES_FOLDER, ignore_platform)
 
-    @transient_progress("custom packages")
+    @progress_decorator("custom packages")
     @memoize
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         custom_packages = self.get_packages()
 
         return [pkg.name for pkg in custom_packages if pkg.check(supress_output=True)]
 
-    def install(self, packages: list[str] | list[Package]) -> bool:
+    def install(self, packages: list[str] | list[Package], force=True) -> bool:
         if not packages:
             return True
         all_packages = self.get_packages()
@@ -215,7 +215,7 @@ class Custom(PackageManager):
             pm.install(list(deps))
 
         for package in sorted_packages:
-            package.install()
+            package.install(force=force)
 
         return True
 
@@ -301,7 +301,7 @@ class Pacman(PackageManager):
         super().__init__("pacman")
         self.aur_helper = aur_helper
 
-    @transient_progress("pacman packages")
+    @progress_decorator("pacman packages")
     @memoize
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         process = subprocess.Popen(
@@ -326,7 +326,7 @@ class Pacman(PackageManager):
         ]
         return list(filter(lambda p: p not in custom_package_names, pkg_names))
 
-    def install(self, packages: list[str]) -> bool:
+    def install(self, packages: list[str], force=True) -> bool:
         if not packages:
             return True
         process = subprocess.Popen(
@@ -365,7 +365,7 @@ class Winget(PackageManager):
     def __init__(self) -> None:
         super().__init__("winget")
 
-    @transient_progress("winget packages")
+    @progress_decorator("winget packages")
     @memoize
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         import json
@@ -393,7 +393,7 @@ class Winget(PackageManager):
         ]
         return list(filter(lambda p: p not in custom_package_names, pkg_names))
 
-    def install(self, packages: list[str]) -> bool:
+    def install(self, packages: list[str], force=True) -> bool:
         if not packages:
             return True
         from os import system
@@ -441,7 +441,7 @@ class Scoop(PackageManager):
     def __init__(self) -> None:
         super().__init__("scoop")
 
-    @transient_progress("scoop packages")
+    @progress_decorator("scoop packages")
     @memoize
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         import json
@@ -469,7 +469,7 @@ class Scoop(PackageManager):
         ]
         return list(filter(lambda p: p not in custom_package_names, pkg_names))
 
-    def install(self, packages: list[str]) -> bool:
+    def install(self, packages: list[str], force=True) -> bool:
         if not packages:
             return True
         from os import system

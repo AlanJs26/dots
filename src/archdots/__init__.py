@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 import os
 from dacite.core import from_dict
+from shutil import which
 
 from archdots.schema import Metadata, ExtendedJSONEncoder
 from archdots.exceptions import (
@@ -31,6 +32,14 @@ def main():
     """
     archdots entrypoint
     """
+
+    if which("chezmoi") is None:
+        from archdots.console import warn_console
+
+        warn_console.print(
+            'chezmoi is not installed. Run "dots init" to install it and setup your repository'
+        )
+
     try:
         roots = [
             str(Path(p) / Path(COMMANDS_FOLDER).name)
@@ -60,17 +69,18 @@ def main():
         parser, metadata_dict, parser_dict = build_argparser(
             command_tree, cached_metadata_dict
         )
-        parser.add_argument('--info', action='store_true', help="useful informations")
+        parser.add_argument("--info", action="store_true", help="useful informations")
 
         args = parser.parse_args()
 
         if args.info == True:
             from rich import print
-            print('archdots\n')
-            print('{: <20}: {}'.format('config folder', CONFIG_FOLDER))
-            print('{: <20}: {}'.format('cache folder', CACHE_FOLDER))
-            print('{: <20}: {}'.format('chezmoi folder', CHEZMOI_FOLDER))
-            print('{: <20}: {}'.format('recognized platform', PLATFORM))
+
+            print("archdots\n")
+            print("{: <20}: {}".format("config folder", CONFIG_FOLDER))
+            print("{: <20}: {}".format("cache folder", CACHE_FOLDER))
+            print("{: <20}: {}".format("chezmoi folder", CHEZMOI_FOLDER))
+            print("{: <20}: {}".format("recognized platform", PLATFORM))
             exit()
 
         run_command(args, metadata_dict, parser_dict)

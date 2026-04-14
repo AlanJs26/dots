@@ -1,0 +1,18 @@
+{{ if eq .chezmoi.os "windows" }}
+.config/archdots
+{{ else }}
+AppData/Local/archdots
+{{ end }}
+
+.venv
+*.venv
+./**/.venv
+
+.git
+*.git
+./**/.git
+
+__pycache__
+*__pycache__*
+./**/__pycache__
+

@@ -8,6 +8,9 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
+from archdots.console import print_title
+from archdots.constants import HEALTH_FOLDER
+from archdots.package import get_packages
 from archdots.package_manager import package_managers, Custom
 from archdots.settings import read_config
 import subprocess
@@ -72,7 +75,12 @@ if "pkgs" in config and "custom" in config["pkgs"]:
 lost_packages = len(lost_packages_set)
 
 
-print("[cyan]::[/] Packages")
+health_scripts = get_packages(HEALTH_FOLDER)
+unconfigured_scripts = [
+    pkg for pkg in health_scripts if not pkg.check(supress_output=True)
+]
+
+print_title("Packages")
 
 
 def print_aligned(key, value):

@@ -202,6 +202,23 @@ class Package:
             with open(file_command_path, "w") as f:
                 f.write(
                     '$ErrorActionPreference = "Stop"\n'
+                    + r"""
+                       function Uninstall-Program {Param([string]$name)
+                       $uninstall32 = gci "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall" | foreach { gp $_.PSPath } | ? { $_ -match $name } | select UninstallString
+                       $uninstall64 = gci "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" | foreach { gp $_.PSPath } | ? { $_ -match $name } | select UninstallString
+
+                       if ($uninstall64) {
+                       $uninstall64 = $uninstall64.UninstallString -Replace "msiexec.exe","" -Replace "/I","" -Replace "/X",""
+                       $uninstall64 = $uninstall64.Trim()
+                       Write "Uninstalling..."
+                       start-process "msiexec.exe" -arg "/X $uninstall64 /qb" -Wait}
+                       if ($uninstall32) {
+                       $uninstall32 = $uninstall32.UninstallString -Replace "msiexec.exe","" -Replace "/I","" -Replace "/X",""
+                       $uninstall32 = $uninstall32.Trim()
+                       Write "Uninstalling..."
+                       start-process "msiexec.exe" -arg "/X $uninstall32 /qb" -Wait}
+                       }
+                       """
                     + "function which {Param([string]$command) if ((Get-Command $command -ErrorAction SilentlyContinue) -eq $null) {exit 1}}"
                     + '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")\n'
                     + '[System.Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")\n'
@@ -293,7 +310,7 @@ class Package:
         return os.path.join(CACHE_FOLDER, self.name)
 
 
-def get_packages(folder: str, ignore_platform=False) -> list[Package]:
+def get_packages(folder: str | Path, ignore_platform=False) -> list[Package]:
     """
     returns all packages inside folder (valid packages contains a PKGBUILD)
     """

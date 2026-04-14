@@ -1,0 +1,31 @@
+description='A command-line installer for Windows'
+url='https://scoop.sh'
+depends=()
+source=()
+# make this package platform specific. Supported platforms: linux, windows 
+platform='windows'
+
+# All items of source will be downloaded and extracted (when necessary)
+# all downloaded (or extracted folders) are stored inside ${sourced[@]}
+# This script runs inside a folder over ~/.cache/archdots/pkgname, where all sources are downloaded
+#
+# $PKGPATH has the path to folder containing this file 
+
+# This function install the package on the system
+install() {
+  irm get.scoop.sh | iex 
+  $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") 
+  scoop bucket add extras
+  scoop bucket add nerd-fonts
+}
+
+# This function uninstall the package from the system
+uninstall() {
+  scoop uninstall scoop 
+}
+
+# This function should end with exit code 0 when the package is installed on system
+# and end with exit code 1 when it is uninstalled
+check() {
+  which scoop
+}

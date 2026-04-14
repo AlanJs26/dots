@@ -14,7 +14,6 @@ def default_editor(file: Path | str):
         import webbrowser
 
         webbrowser.open(str(file))
-        # os.system(f'"{file}"')
     else:
         os.system(f'$EDITOR "{file}"')
 
