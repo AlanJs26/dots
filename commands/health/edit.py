@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: open a health script in default editor
 arguments:
@@ -12,11 +12,11 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.console import print_title
+from archdots.ui.console import print_title
 from archdots.utils import default_editor
 from rich import print
-from archdots.constants import HEALTH_FOLDER
-from archdots.package import get_packages
+from archdots.core.constants import HEALTH_FOLDER
+from archdots.packages.package import get_packages
 
 all_packages = get_packages(HEALTH_FOLDER)
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
@@ -44,3 +44,5 @@ else:
     )
 
 default_editor(selected_package.pkgbuild)
+
+

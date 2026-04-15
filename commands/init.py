@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: setup chezmoi and default packages
 ARCHDOTS
@@ -11,12 +11,12 @@ import os
 from pathlib import Path
 import shutil
 from rich import print
-from archdots.console import print_title, prompt, transient_progress
-from archdots.constants import CHEZMOI_FOLDER, CONFIG_FOLDER, MODULE_PATH
-from archdots.exceptions import CommandException
-from archdots.package import get_packages
-from archdots.console import warn_console, confirm
-from archdots.package_manager import split_external_dependencies
+from archdots.ui.console import print_title, prompt, transient_progress
+from archdots.core.constants import CHEZMOI_FOLDER, CONFIG_FOLDER, MODULE_PATH
+from archdots.core.exceptions import CommandException
+from archdots.packages.package import get_packages
+from archdots.ui.console import warn_console, confirm
+from archdots.packages.dependencies import split_external_dependencies
 from archdots.utils import is_url_valid
 from shutil import which
 
@@ -97,3 +97,5 @@ if CHEZMOI_AVAILABLE:
         os.system(f"chezmoi init --apply --verbose {git_origin}")
 else:
     warn_console.print("chezmoi not found. If you have already installed it, open a new terminal or refresh the environment variables")
+
+

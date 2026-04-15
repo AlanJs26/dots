@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: create a new custom package
 ARCHDOTS
@@ -7,13 +7,15 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.console import print_title
-from archdots.package import Package
-from archdots.package_manager import package_managers, are_custom_packages_valid, Custom
-from archdots.utils import default_editor
+from archdots.ui.console import print_title
+from archdots.packages.package import Package
+from archdots.packages.dependencies import are_custom_packages_valid
+from archdots.packages.managers import Custom
+from archdots.packages.managers.registry import get_package_managers
+from archdots.utils.editors import default_editor
 from rich import print
 from rich.prompt import Prompt, Confirm
-from archdots.constants import PACKAGES_FOLDER, PLATFORM
+from archdots.core.constants import PACKAGES_FOLDER, PLATFORM
 from pathlib import Path
 
 import os
@@ -50,6 +52,7 @@ while pkg_sources and Confirm.ask(
     )
 
 all_packages = Custom().get_packages()
+package_managers = get_package_managers()
 
 print_title("Dependencies")
 print(
@@ -125,15 +128,17 @@ with open(Path(PACKAGES_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
     f.write(new_pkgbuild.strip())
 
 if Confirm.ask(f"Add {pkg_name} as a managed package?", default=True):  # type: ignore
-    from archdots.settings import read_config, save_config
+    from archdots.config.manager import ConfigManager
 
-    config = read_config()
+    config = ConfigManager().load()
     if "pkgs" not in config:
         config["pkgs"] = {}
     if "custom" not in config["pkgs"]:
         config["pkgs"]["custom"] = []
     config["pkgs"]["custom"].append(pkg_name)
-    save_config(config)
+    ConfigManager().save(config)
 
 if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
     default_editor(Path(PACKAGES_FOLDER) / pkg_name / "PKGBUILD")
+
+

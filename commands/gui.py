@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: GUI for managing packages
 ARCHDOTS
@@ -10,3 +10,5 @@ args = args  # type: ignore
 from archdots.gui import main_gui
 
 main_gui()
+
+

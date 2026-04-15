@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: configure health scripts
 arguments:
@@ -23,10 +23,10 @@ args = args  # type: ignore
 
 from rich import print
 
-from archdots.console import print_title
-from archdots.package import get_packages
-from archdots.constants import HEALTH_FOLDER
-from archdots.package_manager import split_packages_by_pm
+from archdots.ui.console import print_title
+from archdots.packages.package import get_packages
+from archdots.core.constants import HEALTH_FOLDER
+from archdots.packages.dependencies import split_packages_by_pm
 
 
 health_scripts = get_packages(HEALTH_FOLDER)
@@ -75,3 +75,5 @@ for pkg in selected_packages:
 
         if not pkg.install(force=True):
             print_title(f'Failed to configure "{pkg.name}', color="red")
+
+

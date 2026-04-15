@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: all custom packages
 ARCHDOTS
@@ -8,12 +8,12 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
-from archdots.package_manager import Custom
-from archdots.settings import read_config
+from archdots.packages.managers import Custom
+from archdots.config.manager import ConfigManager
 
 packages = Custom().get_packages(ignore_platform=True)
 
-config = read_config()
+config = ConfigManager().load()
 custom_config = []
 if "pkgs" in config and "custom" in config["pkgs"]:
     custom_config = config["pkgs"]["custom"]
@@ -39,3 +39,5 @@ for pkg in packages:
     print_aligned("managed", "yes" if pkg.name in custom_config else "[red]no")
 
     print()
+
+

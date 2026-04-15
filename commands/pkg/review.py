@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: opens a tui to decide what to do with unmanaged packages. add, uninstall or skip
 ARCHDOTS
@@ -13,10 +13,11 @@ import itertools
 from typing import NamedTuple
 from math import ceil
 
-from archdots.constants import PLATFORM
-from archdots.package_manager import Custom, PackageManager, package_managers
-from archdots.settings import read_config, save_config
-from archdots.console import print_title, title, warn_console
+from archdots.core.constants import PLATFORM
+from archdots.packages.managers import Custom, PackageManager
+from archdots.packages.managers.registry import get_package_managers
+from archdots.config.manager import ConfigManager
+from archdots.ui.console import print_title, title, warn_console
 
 from rich.live import Live
 from rich.table import Table
@@ -76,6 +77,7 @@ getchar = _Getch()
 
 
 VISIBLE_ROWS = 10
+package_managers = get_package_managers()
 
 
 def window[T](seq: list[T], n: int, window_size: int) -> list[T]:
@@ -123,7 +125,7 @@ class Row(NamedTuple):
 packages_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
 
-config = read_config()
+config = ConfigManager().load()
 
 unmanaged_packages: dict[str, list[str]] = {}
 
@@ -282,7 +284,7 @@ for pm_name, grouped_rows in itertools.groupby(packages_to_add, lambda row: row.
     pkgs = [row.pkg for row in grouped_rows]
     config["pkgs"][pm_name].extend(pkgs)
 
-save_config(config)
+ConfigManager().save(config)
 
 if packages_to_uninstall:
     print(f"[red]{len(packages_to_uninstall)} packages uninstalled")
@@ -302,3 +304,5 @@ if lost_packages:
         f'packages: {", ".join(lost_packages)}',
         sep="\n",
     )
+
+

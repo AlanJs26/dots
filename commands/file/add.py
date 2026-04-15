@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: adds files to chezmoi
 arguments:
@@ -20,3 +20,4 @@ import subprocess
 target_files = [os.path.expanduser(path) for path in args["target_files"]]
 result = subprocess.run(["chezmoi", "add", *target_files], check=False)
 exit(result.returncode)
+

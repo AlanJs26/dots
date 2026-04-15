@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: sync packages
 ARCHDOTS
@@ -9,16 +9,18 @@ args = args  # type: ignore
 
 import sys
 from rich import print
-from archdots.constants import MODULE_PATH
-from archdots.package_manager import PackageManager, package_managers, Custom
-from archdots.settings import read_config
-from archdots.console import title, warn_console, print_title
+from archdots.core.constants import MODULE_PATH
+from archdots.packages.managers import PackageManager, Custom
+from archdots.packages.managers.registry import get_package_managers
+from archdots.config.manager import ConfigManager
+from archdots.ui.console import title, warn_console, print_title
 from rich.prompt import Confirm
 import importlib.util
 from pathlib import Path
 import os
 
-config = read_config()
+config = ConfigManager().load()
+package_managers = get_package_managers()
 
 if "pkgs" not in config:
     print("there is no pkgs configured", file=sys.stderr)
@@ -96,3 +98,5 @@ else:
 
 if not any(pkgs for pkgs in pending_packages.values()) and not unmanaged_packages:
     print("[green]Already Synced")
+
+

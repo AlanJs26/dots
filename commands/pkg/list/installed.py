@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: installed (and managed) packages
 flags:
@@ -13,11 +13,13 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
-from archdots.console import print_title
-from archdots.package_manager import package_managers
-from archdots.settings import read_config
+from archdots.ui.console import print_title
+from archdots.packages.managers.registry import get_package_managers
+from archdots.config.manager import ConfigManager
 
-config = read_config()
+package_managers = get_package_managers()
+
+config = ConfigManager().load()
 
 if "pkgs" not in config:
     import sys
@@ -40,3 +42,5 @@ for name, pkgs in packages.items():
         if pkg_name not in config["pkgs"][name]:
             continue
         print(pkg_name)
+
+

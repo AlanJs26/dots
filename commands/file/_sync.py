@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: sync dotfiles with chezmoi
 flags:
@@ -19,8 +19,8 @@ import os
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from archdots.settings import read_config
-from archdots.console import title
+from archdots.config.manager import ConfigManager
+from archdots.ui.console import title
 
 
 def run_command(command: list[str], capture_output=False, text=False) -> subprocess.CompletedProcess:
@@ -70,7 +70,7 @@ def run_and_wait(command: list[str]) -> int:
         return 130
 
 
-config = read_config()
+config = ConfigManager().load()
 had_error = False
 
 
@@ -145,3 +145,5 @@ if len(stdout.strip().splitlines()) == 0:
 
 commit_result = commit_changes()
 exit(1 if had_error or commit_result != 0 else 0)
+
+

@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: shows managed dotfiles
 arguments:
@@ -20,7 +20,7 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.file_listing import line_paths, print_paths, run_capture
+from archdots.ui.path_display import line_paths, print_paths, run_capture
 
 
 folders = args["folder"] if args["folder"] else []
@@ -34,3 +34,5 @@ if returncode != 0:
 
 print_paths(line_paths(stdout), use_tree=bool(args["tree"]), level=level)
 exit(0)
+
+

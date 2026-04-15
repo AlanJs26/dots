@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: sync packages and/or files
 arguments:
@@ -21,7 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from archdots.constants import MODULE_PATH
+from archdots.core.constants import MODULE_PATH
 
 
 runner_path = Path(MODULE_PATH) / "runner.py"
@@ -45,3 +45,5 @@ if not requested_type or requested_type == "files":
     had_error = run_archdots(*file_args) != 0 or had_error
 
 exit(1 if had_error else 0)
+
+

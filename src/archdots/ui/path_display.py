@@ -1,3 +1,5 @@
+"""File path display and tree rendering utilities."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -17,6 +19,15 @@ def line_paths(stdout: str) -> list[str]:
     return [line.strip() for line in stdout.splitlines() if line.strip()]
 
 
+def normalize_display_path(path: str) -> str:
+    fixed = path.strip().replace("\\", "/")
+    if fixed.startswith("~/"):
+        return fixed
+    if fixed.startswith("/"):
+        return f"~{fixed}"
+    return f"~/{fixed.lstrip('./')}"
+
+
 def print_paths(paths: Iterable[str], use_tree: bool, level: int) -> None:
     normalized = sorted({normalize_display_path(path) for path in paths if path.strip()})
     if not normalized:
@@ -33,22 +44,13 @@ def print_paths(paths: Iterable[str], use_tree: bool, level: int) -> None:
         parts = [chunk for chunk in rel.split("/") if chunk]
         if not parts:
             continue
-        for idx, chunk in enumerate(parts):
+        for idx, _chunk in enumerate(parts):
             if idx + 1 > level:
                 break
             hierarchy = insert_chunk(hierarchy, parts[: idx + 1])
 
     render_hierarchy(tree, hierarchy)
     print(tree)
-
-
-def normalize_display_path(path: str) -> str:
-    fixed = path.strip().replace("\\", "/")
-    if fixed.startswith("~/"):
-        return fixed
-    if fixed.startswith("/"):
-        return f"~{fixed}"
-    return f"~/{fixed.lstrip('./')}"
 
 
 def lambda_dict() -> dict[str, dict]:

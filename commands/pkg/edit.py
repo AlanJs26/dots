@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: open a custom package in default editor
 arguments:
@@ -13,9 +13,9 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
-from archdots.console import print_title
-from archdots.utils import default_editor
-from archdots.package_manager import Custom
+from archdots.ui.console import print_title
+from archdots.utils.editors import default_editor
+from archdots.packages.managers import Custom
 
 all_packages = Custom().get_packages()
 packages_by_name = {pkg.name: pkg for pkg in all_packages}
@@ -45,3 +45,5 @@ else:
 
 
 default_editor(selected_package.pkgbuild)
+
+

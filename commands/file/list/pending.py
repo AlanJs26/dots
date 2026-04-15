@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: shows pending dotfiles
 arguments:
@@ -22,7 +22,7 @@ args = args  # type: ignore
 
 import re
 
-from archdots.file_listing import normalize_display_path, print_paths, run_capture
+from archdots.ui.path_display import normalize_display_path, print_paths, run_capture
 
 
 def parse_git_cached_files(stdout: str) -> list[str]:
@@ -84,3 +84,5 @@ pending = sorted({normalize_display_path(path) for path in filter_by_folders(pen
 
 print_paths(pending, use_tree=bool(args["tree"]), level=level)
 exit(0)
+
+

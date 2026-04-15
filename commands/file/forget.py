@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: Remove a target from the source state
 arguments:
@@ -20,3 +20,4 @@ import subprocess
 files = [os.path.expanduser(path) for path in args["files"]]
 result = subprocess.run(["chezmoi", "forget", *files], check=False)
 exit(result.returncode)
+

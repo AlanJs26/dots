@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: show diff since last dotfiles sync
 ARCHDOTS
@@ -28,3 +28,5 @@ if reverse_diff.stdout.strip():
 
 fallback = subprocess.run(["chezmoi", "git", "--", "diff", "--cached"], check=False)
 exit(fallback.returncode)
+
+

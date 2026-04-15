@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: overview of files and packages
 ARCHDOTS
@@ -8,18 +8,20 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
-from archdots.console import print_title
-from archdots.constants import HEALTH_FOLDER
-from archdots.package import get_packages
-from archdots.package_manager import package_managers, Custom
-from archdots.settings import read_config
+from archdots.ui.console import print_title
+from archdots.core.constants import HEALTH_FOLDER
+from archdots.packages.package import get_packages
+from archdots.packages.managers import Custom
+from archdots.packages.managers.registry import get_package_managers
+from archdots.config.manager import ConfigManager
 import subprocess
 
+package_managers = get_package_managers()
 installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 
 custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
 
-config = read_config()
+config = ConfigManager().load()
 
 
 def run(text: str):
@@ -109,3 +111,5 @@ pending_files = len(stdout.splitlines())
 print("[cyan]::[/] Files")
 print_aligned("managed", managed_files)
 print_aligned("pending", pending_files)
+
+

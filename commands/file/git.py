@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: run git commands from chezmoi repo
 arguments:
@@ -19,3 +19,5 @@ import subprocess
 git_args = args["args"] if args["args"] else []
 result = subprocess.run(["chezmoi", "git", "--", *git_args], check=False)
 exit(result.returncode)
+
+

@@ -1,24 +1,20 @@
-import os
+"""Utilities for caching and metaclasses."""
+
 import inspect
 import functools
-from pathlib import Path
-from urllib.parse import urlparse
+from abc import ABCMeta
 from collections.abc import Callable
 from typing import TypeVar, ParamSpec
 
-from archdots.constants import PLATFORM
+T = TypeVar("T")  # function return value
+P = ParamSpec("P")  # function parameters
+
+_memo = {}
 
 
-def default_editor(file: Path | str):
-    if PLATFORM == "windows":
-        import webbrowser
+class SingletonMeta(ABCMeta):
+    """Metaclass for singleton pattern implementation."""
 
-        webbrowser.open(str(file))
-    else:
-        os.system(f'$EDITOR "{file}"')
-
-
-class SingletonMeta(type):
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -27,13 +23,12 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-_memo = {}
-
-T = TypeVar("T")  # function return value
-P = ParamSpec("P")  # function parameters
-
-
 def memoize(f: Callable[P, T]) -> Callable[P, T]:
+    """Decorator to cache function results based on use_memo parameter.
+
+    The decorated function MUST have a 'use_memo' boolean parameter (default or explicit).
+    If use_memo=True, result is cached; if use_memo=False, function runs fresh each time.
+    """
 
     @functools.wraps(f)
     def wrapper(*args: P.args, **kwargs: P.kwargs):
@@ -48,7 +43,7 @@ def memoize(f: Callable[P, T]) -> Callable[P, T]:
 
         if use_memo is None or not isinstance(use_memo, bool):
             raise ValueError(
-                "memoize expect the last argument to be a boolean, i.e. use_memo"
+                "memoize expects the 'use_memo' argument to be a boolean"
             )
 
         if f not in _memo:
@@ -61,11 +56,3 @@ def memoize(f: Callable[P, T]) -> Callable[P, T]:
             return _memo[f][args]
 
     return wrapper
-
-
-def is_url_valid(url):
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except AttributeError:
-        return False

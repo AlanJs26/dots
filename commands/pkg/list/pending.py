@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: packages in config.yaml that aren't installed
 flags:
@@ -14,15 +14,18 @@ args = args  # type: ignore
 
 import sys
 from rich import print
-from archdots.console import print_title
-from archdots.package_manager import package_managers, Custom
-from archdots.settings import read_config
+from archdots.ui.console import print_title
+from archdots.packages.managers import Custom
+from archdots.packages.managers.registry import get_package_managers
+from archdots.config.manager import ConfigManager
+
+package_managers = get_package_managers()
 
 installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 
 custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
 
-config = read_config()
+config = ConfigManager().load()
 
 if "pkgs" not in config:
     print("there is no pkgs configured", file=sys.stderr)
@@ -52,3 +55,5 @@ for name, pkgs in pending_packages.items():
     print_title(f"{name}")
     for pkg_name in pkgs:
         print(pkg_name)
+
+

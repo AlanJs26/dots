@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: delete a health script
 arguments:
@@ -13,12 +13,12 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.console import print_title, title
-from archdots.package import get_packages
-from archdots.exceptions import PackageException
+from archdots.ui.console import print_title, title
+from archdots.packages.package import get_packages
+from archdots.core.exceptions import PackageException
 from rich import print
 from rich.prompt import Confirm
-from archdots.constants import HEALTH_FOLDER
+from archdots.core.constants import HEALTH_FOLDER
 from pathlib import Path
 
 import shutil
@@ -66,3 +66,5 @@ for pkg in selected_packages:
             raise PackageException(f"Could not unconfigure {pkg.name}")
     print(f'[red]removing "{Path(pkg.pkgbuild).parent}"')
     shutil.rmtree(Path(pkg.pkgbuild).parent)
+
+
