@@ -12,4 +12,16 @@ chezmoi:
 #     - package1
 #     - package2
 
+# ignored packages by package manager.
+# accepted formats:
+# - exact package name: "package1"
+# - regex pattern: "re:^lib.*"
+# - glob pattern: "glob:python*"
+# ignored_pkgs:
+#   custom:
+#     - old_package
+#   pacman:
+#     - re:^lib32-
+#     - glob:linux-headers*
+
 

@@ -1,6 +1,6 @@
 ﻿"""
 ARCHDOTS
-help: opens a tui to decide what to do with unmanaged packages. add, uninstall or skip
+help: opens a tui to decide what to do with unmanaged, pending and lost packages
 ARCHDOTS
 """
 
@@ -9,13 +9,19 @@ args = args  # type: ignore
 
 from enum import Enum
 import itertools
+import shutil
 
 from typing import NamedTuple
 from math import ceil
+from pathlib import Path
 
-from archdots.core.constants import PLATFORM
+from archdots.core.constants import PACKAGES_FOLDER, PLATFORM
 from archdots.packages.managers import Custom, PackageManager
 from archdots.packages.managers.registry import get_package_managers
+from archdots.packages.filters import (
+    is_package_ignored,
+    warn_pkg_ignored_conflicts,
+)
 from archdots.config.manager import ConfigManager
 from archdots.ui.console import print_title, title, warn_console
 
@@ -39,10 +45,25 @@ class _Getch:
 
     def __call__(self):
         ch = self.impl()
+
+        if isinstance(ch, bytes):
+            # Map Windows extended keys to existing navigation keys.
+            # msvcrt returns b'\xe0' or b'\x00' then a second byte for arrows.
+            if ch in (b"\xe0", b"\x00"):
+                return ""
+
+            if ch == b"P":
+                return "j"  # down arrow
+            if ch == b"H":
+                return "k"  # up arrow
+
+            ch = ch.decode("latin-1", errors="ignore")
+
+        if not ch:
+            return ""
+
         if ord(ch) in [3, 4, 26, 27]:
             return ""
-        if isinstance(ch, bytes):
-            return ch.decode()
         return str(ch)
 
 
@@ -70,7 +91,11 @@ class _GetchWindows:
     def __call__(self):
         import msvcrt
 
-        return msvcrt.getch()
+        first = msvcrt.getch()
+        if first in (b"\xe0", b"\x00"):
+            # Return the second byte of extended key sequences (arrows, etc.).
+            return msvcrt.getch()
+        return first
 
 
 getchar = _Getch()
@@ -89,6 +114,9 @@ def window[T](seq: list[T], n: int, window_size: int) -> list[T]:
 class Decision(Enum):
     ADD = "add"
     UNINSTALL = "uninstall"
+    IGNORE = "ignore"
+    INSTALL = "install"
+    DELETE = "delete"
     SKIP = "skip"
     BACK = "back"
     QUIT = "quit"
@@ -96,16 +124,20 @@ class Decision(Enum):
     INVALID = ""
 
     @staticmethod
-    def handle(choice: str):
+    def handle(choice: str, allowed_decisions: list["Decision"]):
         if not choice:
             raise KeyboardInterrupt
+        if choice == "q":
+            return Decision.QUIT
         if ord(choice) == 127 or choice == "k":
             return Decision.BACK
         if choice == "j":
             return Decision.FORWARD
-        for decision in Decision:
-            if decision != Decision.INVALID and choice == decision.value[0]:
+
+        for decision in allowed_decisions:
+            if choice == decision.value[0]:
                 return decision
+
         return Decision.INVALID
 
 
@@ -113,63 +145,100 @@ class Status(Enum):
     UNREVIEWED = "unreviewed"
     UNINSTALLED = "uninstall"
     ADDED = "add"
+    IGNORED = "ignored"
+    INSTALLED = "install"
+    DELETED = "delete"
     SKIPPED = "skipped"
 
 
+class Kind(Enum):
+    UNMANAGED = "unmanaged"
+    PENDING = "pending"
+    LOST = "lost"
+
+
 class Row(NamedTuple):
+    kind: Kind
     pm: str
     pkg: str
     status: Status
 
 
-packages_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
 pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
+installed_pkgs_by_pm: dict[str, list[str]] = {
+    pm.name: pm.get_installed(use_memo=True) for pm in package_managers
+}
 
 config = ConfigManager().load()
-
-unmanaged_packages: dict[str, list[str]] = {}
+warn_pkg_ignored_conflicts(config)
 
 if "pkgs" not in config:
-    unmanaged_packages = packages_by_pm
-else:
-    for pm in packages_by_pm:
-        if pm not in config["pkgs"]:
-            unmanaged_packages[pm] = packages_by_pm[pm]
-            continue
-        unmanaged_packages[pm] = list(set(packages_by_pm[pm]) - set(config["pkgs"][pm]))
+    config["pkgs"] = {}
 
-if not unmanaged_packages:
-    print("there are any unmanaged packages")
-    exit()
+custom_pm_name = Custom().name
+custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
+
+unmanaged_packages: dict[str, list[str]] = {}
+pending_packages: dict[str, list[str]] = {}
+
+for pm_name, installed_pkgs in installed_pkgs_by_pm.items():
+    configured_pkgs = [
+        pkg
+        for pkg in config["pkgs"].get(pm_name, [])
+        if isinstance(pkg, str)
+    ]
+
+    unmanaged_packages[pm_name] = [
+        pkg
+        for pkg in sorted(set(installed_pkgs).difference(configured_pkgs))
+        if not is_package_ignored(config, pm_name, pkg)
+    ]
+
+    obscured_packages: set[str] = set()
+    if pm_name != custom_pm_name:
+        obscured_packages = set(custom_pkg_names).intersection(configured_pkgs)
+
+    pending_packages[pm_name] = [
+        pkg
+        for pkg in sorted(
+            set(configured_pkgs)
+            .difference(installed_pkgs)
+            .difference(obscured_packages)
+        )
+        if not is_package_ignored(config, pm_name, pkg)
+    ]
 
 rows: list[Row] = []
 for pm, packages in unmanaged_packages.items():
     for package in packages:
-        rows.append(Row(pm, package, Status.UNREVIEWED))
-rows.sort(key=lambda r: r.pkg)
+        rows.append(Row(Kind.UNMANAGED, pm, package, Status.UNREVIEWED))
 
-lost_packages = set(pkg.name for pkg in Custom().get_packages(True)).difference(
-    Custom().get_installed(True)
-)
+for pm, packages in pending_packages.items():
+    for package in packages:
+        rows.append(Row(Kind.PENDING, pm, package, Status.UNREVIEWED))
+
+lost_packages = set(custom_pkg_names).difference(installed_pkgs_by_pm.get(custom_pm_name, []))
 if "pkgs" in config and "custom" in config["pkgs"]:
     lost_packages = lost_packages.difference(config["pkgs"]["custom"])
+lost_packages = {
+    pkg
+    for pkg in lost_packages
+    if not is_package_ignored(config, custom_pm_name, pkg)
+}
+
+for package in sorted(lost_packages):
+    rows.append(Row(Kind.LOST, custom_pm_name, package, Status.UNREVIEWED))
+
+rows.sort(key=lambda r: (r.kind.value, r.pm, r.pkg))
 
 if not rows:
-    if lost_packages:
-        warn_console.print(
-            "Found packages that have been configured but aren't installed neither listed in config.yaml",
-            "To remove this warning, delete those packages or add them to config.yaml\n",
-            f'packages: {", ".join(lost_packages)}',
-            sep="\n",
-        )
-    else:
-        print("nothing to review")
-
+    print("nothing to review")
     exit()
 
 
 def generate_table(rows: list[Row], index=0, visible_rows=-1) -> Table:
     table = Table(show_header=False)
+    table.add_column()
     table.add_column()
     table.add_column()
     table.add_column()
@@ -188,18 +257,36 @@ def generate_table(rows: list[Row], index=0, visible_rows=-1) -> Table:
         focused_index = ceil(visible_rows / 2)
 
     for i, row in enumerate(window(rows, index, visible_rows)):
-        pm, package, status = row
+        kind, pm, package, status = row
         focused_color = "[orange1]" if i == focused_index else "[blue]"
         status_color = "[grey50]"
+        kind_color = "[grey70]"
+        match kind:
+            case Kind.UNMANAGED:
+                kind_color = "[cyan]"
+            case Kind.PENDING:
+                kind_color = "[yellow]"
+            case Kind.LOST:
+                kind_color = "[magenta]"
+
         match status:
             case Status.ADDED:
                 status_color = "[green]"
             case Status.UNINSTALLED:
                 status_color = "[red]"
+            case Status.IGNORED:
+                status_color = "[magenta]"
+            case Status.INSTALLED:
+                status_color = "[green]"
+            case Status.DELETED:
+                status_color = "[red]"
             case Status.SKIPPED:
                 status_color = "[yellow]"
         table.add_row(
-            focused_color + package, focused_color + pm, status_color + status.value
+            focused_color + package,
+            focused_color + pm,
+            kind_color + kind.value,
+            status_color + status.value,
         )
 
     return table
@@ -214,34 +301,46 @@ def make_option(name: str, color="green"):
     return f"([{color}]{name[0]}[/]){name[1:]}"
 
 
+def allowed_decisions_for(kind: Kind) -> list[Decision]:
+    if kind == Kind.UNMANAGED:
+        return [Decision.ADD, Decision.UNINSTALL, Decision.IGNORE, Decision.SKIP]
+    if kind == Kind.PENDING:
+        return [Decision.INSTALL, Decision.SKIP]
+    return [Decision.DELETE, Decision.SKIP]
+
+
 row_index = 0
 with Live(
     group, auto_refresh=False, vertical_overflow="visible", transient=True
 ) as live:  # update 4 times a second to feel fluid
     while row_index < len(rows):
         row = rows[row_index]
+        kind, _, _, _ = row
+        row_actions = allowed_decisions_for(kind)
 
         panel.title = row.pkg
         panel.renderable = "[white]" + "  ".join(
-            make_option(decision)
-            for decision in [
-                d.value
-                for d in list(Decision)
-                if d not in [Decision.INVALID, Decision.FORWARD]
-            ]
+            make_option(decision.value)
+            for decision in [*row_actions, Decision.QUIT]
         )
 
         live.refresh()
 
-        choice = Decision.handle(getchar())
+        choice = Decision.handle(getchar(), row_actions)
 
         match (choice):
             case Decision.ADD:
-                rows[row_index] = Row(row.pm, row.pkg, Status.ADDED)
+                rows[row_index] = Row(row.kind, row.pm, row.pkg, Status.ADDED)
             case Decision.UNINSTALL:
-                rows[row_index] = Row(row.pm, row.pkg, Status.UNINSTALLED)
+                rows[row_index] = Row(row.kind, row.pm, row.pkg, Status.UNINSTALLED)
+            case Decision.IGNORE:
+                rows[row_index] = Row(row.kind, row.pm, row.pkg, Status.IGNORED)
+            case Decision.INSTALL:
+                rows[row_index] = Row(row.kind, row.pm, row.pkg, Status.INSTALLED)
+            case Decision.DELETE:
+                rows[row_index] = Row(row.kind, row.pm, row.pkg, Status.DELETED)
             case Decision.SKIP:
-                rows[row_index] = Row(row.pm, row.pkg, Status.SKIPPED)
+                rows[row_index] = Row(row.kind, row.pm, row.pkg, Status.SKIPPED)
             case Decision.BACK:
                 row_index = max(row_index - 1, 0)
                 group.renderables[0] = generate_table(rows, row_index, VISIBLE_ROWS)
@@ -253,14 +352,18 @@ with Live(
                     continue
             case Decision.FORWARD:
                 if row.status == Status.UNREVIEWED:
-                    rows[row_index] = Row(row.pm, row.pkg, Status.SKIPPED)
+                    rows[row_index] = Row(row.kind, row.pm, row.pkg, Status.SKIPPED)
 
         row_index += 1
         group.renderables[0] = generate_table(rows, row_index, VISIBLE_ROWS)
 
 
 error_happened = False
-packages_to_uninstall = list(filter(lambda row: row.status == Status.UNINSTALLED, rows))
+unmanaged_rows = [row for row in rows if row.kind == Kind.UNMANAGED]
+pending_rows = [row for row in rows if row.kind == Kind.PENDING]
+lost_rows = [row for row in rows if row.kind == Kind.LOST]
+
+packages_to_uninstall = [row for row in unmanaged_rows if row.status == Status.UNINSTALLED]
 
 if packages_to_uninstall:
     print_title(
@@ -273,7 +376,21 @@ if packages_to_uninstall:
             pkgs = [row.pkg for row in grouped_rows]
             error_happened = not pm_by_name[pm_name].uninstall(pkgs) or error_happened
 
-packages_to_add = list(filter(lambda row: row.status == Status.ADDED, rows))
+packages_to_add = [row for row in unmanaged_rows if row.status == Status.ADDED]
+packages_to_ignore = [row for row in unmanaged_rows if row.status == Status.IGNORED]
+packages_to_install = [row for row in pending_rows if row.status == Status.INSTALLED]
+packages_to_delete = [row for row in lost_rows if row.status == Status.DELETED]
+
+if packages_to_install:
+    print_title(
+        f'about to install the following pending packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_install)}'
+    )
+    if Confirm.ask(title("Proceed?"), default=True):
+        for pm_name, grouped_rows in itertools.groupby(
+            packages_to_install, lambda row: row.pm
+        ):
+            pkgs = [row.pkg for row in grouped_rows]
+            error_happened = not pm_by_name[pm_name].install(pkgs) or error_happened
 
 if "pkgs" not in config:
     config["pkgs"] = {}
@@ -283,6 +400,27 @@ for pm_name, grouped_rows in itertools.groupby(packages_to_add, lambda row: row.
         config["pkgs"][pm_name] = []
     pkgs = [row.pkg for row in grouped_rows]
     config["pkgs"][pm_name].extend(pkgs)
+    config["pkgs"][pm_name] = sorted(set(config["pkgs"][pm_name]))
+
+if "ignored_pkgs" not in config:
+    config["ignored_pkgs"] = {}
+
+for pm_name, grouped_rows in itertools.groupby(packages_to_ignore, lambda row: row.pm):
+    if pm_name not in config["ignored_pkgs"]:
+        config["ignored_pkgs"][pm_name] = []
+    pkgs = [row.pkg for row in grouped_rows]
+    config["ignored_pkgs"][pm_name].extend(pkgs)
+    config["ignored_pkgs"][pm_name] = sorted(set(config["ignored_pkgs"][pm_name]))
+
+if packages_to_delete:
+    print_title(
+        f'about to delete the following lost packages: [cyan]{"  ".join(row.pkg for row in packages_to_delete)}'
+    )
+    if Confirm.ask(title("Proceed?"), default=True):
+        for row in packages_to_delete:
+            package_path = Path(PACKAGES_FOLDER) / row.pkg
+            if package_path.is_dir():
+                shutil.rmtree(package_path)
 
 ConfigManager().save(config)
 
@@ -290,19 +428,16 @@ if packages_to_uninstall:
     print(f"[red]{len(packages_to_uninstall)} packages uninstalled")
 if packages_to_add:
     print(f"[green]{len(packages_to_add)} packages added")
+if packages_to_ignore:
+    print(f"[magenta]{len(packages_to_ignore)} packages ignored")
+if packages_to_install:
+    print(f"[green]{len(packages_to_install)} pending packages installed")
+if packages_to_delete:
+    print(f"[red]{len(packages_to_delete)} lost packages deleted")
 
 if error_happened:
     warn_console.print(
         f"\nSome packages exited with error on removal. Possibly the numbers above are not valid"
-    )
-
-
-if lost_packages:
-    warn_console.print(
-        "\nFound packages that have been configured but aren't installed neither listed in config.yaml",
-        "To remove this warning, delete those packages or add them to config.yaml\n",
-        f'packages: {", ".join(lost_packages)}',
-        sep="\n",
     )
 
 

@@ -28,8 +28,8 @@ def save_config(data: Any) -> None:
 
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
-    
-    new_config = iterdict_imports(config, merged_config, data)
+
+    new_config = iterdict_imports(config, merged_config, data, config_path)
 
     with open(config_path, "w") as f:
         f.write(yaml.dump(new_config))

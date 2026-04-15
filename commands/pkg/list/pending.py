@@ -15,37 +15,16 @@ args = args  # type: ignore
 import sys
 from rich import print
 from archdots.ui.console import print_title
-from archdots.packages.managers import Custom
-from archdots.packages.managers.registry import get_package_managers
-from archdots.config.manager import ConfigManager
+from archdots.packages.filters import get_pending_packages
 
-package_managers = get_package_managers()
+pending_packages = {
+    pm.name: pkgs
+    for pm, pkgs in get_pending_packages(use_memo=True).items()
+}
 
-installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
-
-custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
-
-config = ConfigManager().load()
-
-if "pkgs" not in config:
-    print("there is no pkgs configured", file=sys.stderr)
+if not any(pkgs for pkgs in pending_packages.values()):
+    print("there are no pending packages", file=sys.stderr)
     exit()
-
-pending_packages: dict[str, list[str]] = {}
-all_obscured_packages: list[str] = []
-for pm_name in installed_pkgs_by_pm:
-    if pm_name not in config["pkgs"]:
-        continue
-    obscured_packages = set()
-    if pm_name != Custom().name:
-        obscured_packages = set(custom_pkg_names).intersection(config["pkgs"][pm_name])
-        all_obscured_packages.extend(f"{pm_name}:{pkg}" for pkg in obscured_packages)
-
-    pending_packages[pm_name] = list(
-        set(config["pkgs"][pm_name])
-        - set(installed_pkgs_by_pm[pm_name])
-        - obscured_packages
-    )
 
 for name, pkgs in pending_packages.items():
     if not pkgs:

@@ -14,26 +14,12 @@ args = args  # type: ignore
 
 from rich import print
 from archdots.ui.console import print_title
-from archdots.packages.managers.registry import get_package_managers
-from archdots.config.manager import ConfigManager
+from archdots.packages.filters import get_unmanaged_packages
 
-package_managers = get_package_managers()
-
-installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
-
-config = ConfigManager().load()
-
-
-if "pkgs" not in config:
-    config["pkgs"] = {}
-
-unmanaged_packages: dict[str, list[str]] = {}
-for pm_name in installed_pkgs_by_pm.keys():
-    if pm_name not in config["pkgs"]:
-        config["pkgs"][pm_name] = []
-    unmanaged_packages[pm_name] = list(
-        set(installed_pkgs_by_pm[pm_name]) - set(config["pkgs"][pm_name])
-    )
+unmanaged_packages = {
+    pm.name: pkgs
+    for pm, pkgs in get_unmanaged_packages(use_memo=True).items()
+}
 
 for name, pkgs in unmanaged_packages.items():
     if not pkgs:
