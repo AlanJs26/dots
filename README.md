@@ -27,6 +27,34 @@ Any script placed in the `commands` folder will automatically become available i
 
 ## 🛠️ Installation
 
+Install in one command on a clean machine (without git/uv/python preinstalled):
+
+### Windows (PowerShell)
+
+```powershell
+$ irm https://raw.githubusercontent.com/AlanJs26/dots/main/install.ps1 | iex
+```
+
+Optional: run initial setup automatically after install:
+
+```powershell
+$ & ([scriptblock]::Create((irm https://raw.githubusercontent.com/AlanJs26/dots/main/install.ps1))) -RunInit
+```
+
+### Linux
+
+```bash
+$ curl -fsSL https://raw.githubusercontent.com/AlanJs26/dots/main/install.sh | sh
+```
+
+Optional: run initial setup automatically after install:
+
+```bash
+$ curl -fsSL https://raw.githubusercontent.com/AlanJs26/dots/main/install.sh | sh -s -- --run-init
+```
+
+### Manual install (development)
+
 Clone the repository and install it using pip:
 
 ```bash
