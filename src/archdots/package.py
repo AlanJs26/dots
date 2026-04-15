@@ -12,8 +12,7 @@ from pathlib import Path
 
 from shutil import which
 
-PWSH_AVAILABLE = which("winget") is not None
-
+PWSH_AVAILABLE = which("pwsh") is not None
 
 @dataclass
 class Package:
@@ -222,11 +221,12 @@ class Package:
                     + "function which {Param([string]$command) if ((Get-Command $command -ErrorAction SilentlyContinue) -eq $null) {exit 1}}"
                     + '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")\n'
                     + '[System.Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")\n'
+                    + 'if ((Get-Command refreshenv -ErrorAction SilentlyContinue) -ne $null) {refreshenv}\n'
                     + f'$PKGPATH = "{os.path.dirname(self.pkgbuild)}"\n{hashtable}\n{found_function.content}'
                 )
 
             powershell_cmd = "pwsh" if PWSH_AVAILABLE else "powershell"
-            command = f"{powershell_cmd} -File {file_command_path.resolve()}"
+            command = f"{powershell_cmd} -ExecutionPolicy ByPass -File {file_command_path.resolve()}"
 
             process = subprocess.Popen(
                 ["cmd", "/c", command],

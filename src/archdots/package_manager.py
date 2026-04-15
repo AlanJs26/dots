@@ -446,28 +446,36 @@ class Scoop(PackageManager):
     def get_installed(self, use_memo=False, by_user=True) -> list[str]:
         import json
 
-        process = subprocess.Popen(
-            f'powershell -Command "(scoop list 6> $null)|ConvertTo-Json"',
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            shell=True,
-            text=True,
-            encoding="cp437",
-        )
+        try:
+            process = subprocess.run(
+                f'powershell -Command "(scoop list 6> $null)|ConvertTo-Json"',
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=True,
+                text=True,
+                encoding="utf-8",
+                timeout=30,
+            )
 
-        if not process.stdout:
-            if process.stderr:
-                err_console.print(process.stderr.read())
-            raise PackageManagerException("could not run 'scoop list'")
+            if process.returncode != 0 or not process.stdout.strip():
+                # scoop is not installed or returned no output
+                return []
 
-        scoop_result = json.loads(process.stdout.read())
-
-        pkg_names = [result["Name"] for result in scoop_result]
-        custom_package_names = [
-            pkg.name for pkg in Custom().get_packages(use_memo=use_memo)
-        ]
-        return list(filter(lambda p: p not in custom_package_names, pkg_names))
+            scoop_result = json.loads(process.stdout)
+            pkg_names = [result["Name"] for result in scoop_result]
+            custom_package_names = [
+                pkg.name for pkg in Custom().get_packages(use_memo=use_memo)
+            ]
+            return list(filter(lambda p: p not in custom_package_names, pkg_names))
+        except json.JSONDecodeError:
+            # scoop returned invalid JSON, likely not installed
+            return []
+        except subprocess.TimeoutExpired:
+            err_console.print("[warning]scoop list command timed out[/warning]")
+            return []
+        except Exception as e:
+            err_console.print(f"[warning]error running scoop list: {e}[/warning]")
+            return []
 
     def install(self, packages: list[str], force=True) -> bool:
         if not packages:
