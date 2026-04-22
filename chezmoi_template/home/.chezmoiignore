@@ -1,9 +1,3 @@
-{{ if eq .chezmoi.os "windows" }}
-.config/archdots
-{{ else }}
-AppData/Local/archdots
-{{ end }}
-
 .venv
 *.venv
 ./**/.venv

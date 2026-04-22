@@ -89,7 +89,7 @@ class ConfigManager(metaclass=SingletonMeta):
         config = iterdict_merge(config, handle_imports)
 
         # Merge with defaults
-        with open(Path(MODULE_PATH) / "config.default.yaml", "r") as f:
+        with open(Path(MODULE_PATH) / "chezmoi_template/archdots/config.yaml", "r") as f:
             default_config = yaml.safe_load(f)
 
         self._config_memo = {**default_config, **config}

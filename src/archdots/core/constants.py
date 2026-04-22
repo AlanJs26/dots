@@ -8,13 +8,12 @@ import archdots
 if os.name == "nt":
     PLATFORM = "windows"
     CACHE_FOLDER = os.path.expanduser("~/AppData/Local/Temp/archdots")
-    CONFIG_FOLDER = os.path.expanduser("~/AppData/Local/archdots")
 else:
     PLATFORM = "linux"
     CACHE_FOLDER = os.path.expanduser("~/.cache/archdots")
-    CONFIG_FOLDER = os.path.expanduser("~/.config/archdots")
 
 # Standard folders
+CONFIG_FOLDER = os.path.expanduser("~/.config/archdots")
 CHEZMOI_FOLDER = os.path.expanduser("~/.local/share/chezmoi")
 
 # Config subfolders

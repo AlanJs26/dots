@@ -85,7 +85,7 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
                 + "function which {Param([string]$command) if ((Get-Command $command -ErrorAction SilentlyContinue) -eq $null) {exit 1}}"
                 + '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")\n'
                 + '[System.Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")\n'
-                + 'if ((Get-Command refreshenv -ErrorAction SilentlyContinue) -ne $null) {refreshenv}\n'
+                # + 'if ((Get-Command refreshenv -ErrorAction SilentlyContinue) -ne $null) {refreshenv}\n'
                 + f'$PKGPATH = "{os.path.dirname(package.pkgbuild)}"\n{hashtable}\n{found_function.content}'
             )
 

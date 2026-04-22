@@ -116,7 +116,7 @@ def read_config_file(config_path: Path) -> dict[str, Any]:
     # Create default config if missing
     if not os.path.isfile(config_path):
         os.makedirs(custom_folder, exist_ok=True)
-        with open(module_path / "config.default.yaml", "r") as f:
+        with open(module_path / "chezmoi_template/archdots/config.yaml", "r") as f:
             default_config = f.read()
         with open(config_path, "w") as f:
             f.write(default_config)
