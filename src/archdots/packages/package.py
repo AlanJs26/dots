@@ -22,6 +22,7 @@ class Package:
     available_functions: list[str]
     platform: str = "linux"
     source_on_check: bool = False
+    elevated: bool = False
 
     def __post_init__(self):
         if not self.name or not self.description:
@@ -41,6 +42,8 @@ class Package:
             raise PackageException(f'url "{self.url}" is bad formated', self)
         if self.source and (not all(is_url_valid(source) for source in self.source)):
             raise PackageException(f"invalid source(s)\nsources: {self.source}", self)
+
+        self.elevated = self.elevated == 'true'
 
     def __hash__(self) -> int:
         return hash(self.name)

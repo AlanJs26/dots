@@ -97,6 +97,8 @@ url='{pkg_url.replace("'", "\\'")}'
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=({' '.join(f"'{source}'" for source in pkg_sources)})
 # source_on_check=false
+# asks user for elevated privileges
+# elevated=false
 # make this package platform specific. Supported platforms: linux, windows 
 platform='{PLATFORM}'
 

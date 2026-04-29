@@ -53,9 +53,24 @@ def main():
         parser, metadata_dict, parser_dict = build_argparser(
             command_tree, cached_metadata_dict
         )
+        parser.add_argument("--clear-argument-cache", action="store_true", help="clear the cache used for optimizing the discovery of custom commands")
         parser.add_argument("--info", action="store_true", help="useful informations")
 
         args = parser.parse_args()
+
+        if args.clear_argument_cache == True:
+            from rich import print
+            command_tree_cache_path = Path(CACHE_FOLDER) / 'command_tree.json'
+            metadata_dict_cache_path = Path(CACHE_FOLDER) / 'metadata_dict.json'
+            config_cache_path = Path(CACHE_FOLDER) / 'config.yaml.cache'
+            if command_tree_cache_path.is_file():
+                os.remove(command_tree_cache_path)
+            if metadata_dict_cache_path.is_file():
+                os.remove(metadata_dict_cache_path)
+            if config_cache_path.is_file():
+                os.remove(config_cache_path)
+            print("custom command's cache cleared")
+            exit()        
 
         if args.info == True:
             from rich import print

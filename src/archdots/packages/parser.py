@@ -3,9 +3,10 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Any
+import lark
 
 from archdots.core.constants import PLATFORM
-from archdots.core.exceptions import PackageException
+from archdots.core.exceptions import PackageException, ParseException
 
 
 def parse_package_bash(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
@@ -53,17 +54,14 @@ def parse_package_bash(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[
 
 
 def parse_package_lark(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
-    from archdots.package_parser import Function, Item, PackageTransformer, parser
+    from archdots.package_parser import parse_from_path
 
-    with open(pkgbuild_path, "r") as f:
-        text = f.read()
-    tree = parser.parse(text)
-    parsed_items: list[Function | Item] = PackageTransformer().transform(tree)
+    items, funcs = parse_from_path(pkgbuild_path)
 
-    fields_dict = {item.key: item.value for item in parsed_items if isinstance(item, Item)}
-    funcs = [func.name for func in parsed_items if isinstance(func, Function)]
+    fields_dict = {item.key: item.value for item in items}
+    func_names = [func.name for func in funcs]
 
-    return fields_dict, funcs
+    return fields_dict, func_names
 
 
 def package_from_path(folder_path: str | Path, package_cls):
@@ -99,6 +97,13 @@ def package_from_path(folder_path: str | Path, package_cls):
     if "platform" in fields_dict and fields_dict["platform"] not in ["linux", "windows"]:
         raise PackageException(
             f'invalid platform: {fields_dict["platform"]}',
+            pkg_name=pkg_name,
+            pkgbuild=str(pkgbuild_path),
+        )
+
+    if "elevated" in fields_dict and fields_dict["elevated"].lower() not in ["true", "false"]:
+        raise PackageException(
+            f'invalid value for field elevated: {fields_dict["elevated"]}',
             pkg_name=pkg_name,
             pkgbuild=str(pkgbuild_path),
         )

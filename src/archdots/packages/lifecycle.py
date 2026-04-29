@@ -14,6 +14,7 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
     """Execute one function from a package PKGBUILD script."""
     sources = sources or []
     os.makedirs(package.get_cache_folder(), exist_ok=True)
+    sudo = 'sudo' if PLATFORM == 'linux' else 'gsudo'
 
     if PLATFORM == "linux":
         bashdict = ""
@@ -26,7 +27,7 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
         PKGPATH=\"{os.path.dirname(package.pkgbuild)}\"
         {bashdict}
         source {os.path.abspath(package.pkgbuild)}
-        {name}
+        {sudo if package.elevated else ''} {name}
         """
 
         process = subprocess.Popen(
@@ -45,24 +46,19 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
                 hashtable += f'"{i}" = "{folder}"\n'
             hashtable += "}"
 
-        from archdots.package_parser import Function, PackageTransformer, parser
+        from archdots.package_parser import parse_from_path
 
-        with open(package.pkgbuild, "r") as f:
-            text = f.read()
-        tree = parser.parse(text)
-        parsed_functions: list[Function] = [
-            fn for fn in PackageTransformer().transform(tree) if isinstance(fn, Function)
-        ]
-
-        found_function = next(filter(lambda item: item.name == name, parsed_functions), None)
+        _, parsed_functions = parse_from_path(package.pkgbuild)
+        
+        found_function = next(filter(lambda func: func.name == name, parsed_functions), None)
         if not found_function:
             raise PackageException(
-                f'tried to executed an unknown PKGBUILD function "{found_function}"',
+                f'tried to executed an unknown PKGBUILD function "{name}"',
                 package,
             )
 
         file_command_path = Path(package.get_cache_folder()) / f"{name}.ps1"
-        with open(file_command_path, "w") as f:
+        with open(file_command_path, "w", encoding="utf-8") as f:
             f.write(
                 '$ErrorActionPreference = "Stop"\n'
                 + r"""
@@ -84,13 +80,11 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
                    """
                 + "function which {Param([string]$command) if ((Get-Command $command -ErrorAction SilentlyContinue) -eq $null) {exit 1}}"
                 + '$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")\n'
-                + '[System.Environment]::SetEnvironmentVariable("Path", $env:Path, "Process")\n'
-                # + 'if ((Get-Command refreshenv -ErrorAction SilentlyContinue) -ne $null) {refreshenv}\n'
                 + f'$PKGPATH = "{os.path.dirname(package.pkgbuild)}"\n{hashtable}\n{found_function.content}'
             )
 
         powershell_cmd = "pwsh" if PWSH_AVAILABLE else "powershell"
-        command = f"{powershell_cmd} -ExecutionPolicy ByPass -File {file_command_path.resolve()}"
+        command = f"{sudo if package.elevated else ''} {powershell_cmd} -ExecutionPolicy ByPass -File {file_command_path.resolve()}"
 
         process = subprocess.Popen(
             ["cmd", "/c", command],
@@ -110,7 +104,7 @@ def check(package, supress_output=False):
     if package.source_on_check:
         sources = package.fetch_sources()
         os.makedirs(package.get_cache_folder(), exist_ok=True)
-        with open(Path(package.get_cache_folder()) / "sources.txt", "w") as f:
+        with open(Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8") as f:
             f.writelines(sources)
     else:
         sources = []
@@ -126,7 +120,7 @@ def update(package, supress_output=False, force=False):
         return
 
     sources = package.fetch_sources()
-    with open(Path(package.get_cache_folder()) / "sources.txt", "w") as f:
+    with open(Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8") as f:
         f.writelines(sources)
 
     status = run_pkgbuild_function(package, "update", supress_output, sources) == 0
@@ -143,7 +137,7 @@ def install(package, supress_output=False, force=False):
         return
 
     sources = package.fetch_sources()
-    with open(Path(package.get_cache_folder()) / "sources.txt", "w") as f:
+    with open(Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8") as f:
         f.writelines(sources)
 
     status = run_pkgbuild_function(package, "install", supress_output, sources) == 0
@@ -163,7 +157,7 @@ def uninstall(package, supress_output=False, force=False):
     sources_txt = Path(package.get_cache_folder()) / "sources.txt"
     sources: list[str] = []
     if os.path.isfile(sources_txt):
-        with open(sources_txt, "r") as f:
+        with open(sources_txt, "r", encoding="utf-8") as f:
             sources = [line.strip() for line in f.readlines()]
 
     status = run_pkgbuild_function(package, "uninstall", supress_output, sources) == 0

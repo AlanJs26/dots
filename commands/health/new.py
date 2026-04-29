@@ -83,6 +83,8 @@ url=''
 depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
 source=()
 # source_on_check=false
+# asks user for elevated privileges
+# elevated=false
 # make this health script platform specific. Supported platforms: linux, windows 
 platform='{PLATFORM}'
 

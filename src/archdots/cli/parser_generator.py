@@ -41,11 +41,12 @@ def parser_from_metadata(name: str, metadata: Metadata, subparser: _SubParsersAc
             if not argument.required and argument.nargs != "*":
                 extra_args["nargs"] = "?"
         else:
-            long_name = "--" + re.sub("^--", "", argument.long)
-            names = [long_name]
+            names = []
             if argument.short:
                 short_name = "-" + re.sub("^-", "", argument.short)
                 names.append(short_name)
+            long_name = "--" + re.sub("^--", "", argument.long)
+            names.append(long_name)
         parser.add_argument(*filter(str, names), help=argument.help, **extra_args)
 
     return parser

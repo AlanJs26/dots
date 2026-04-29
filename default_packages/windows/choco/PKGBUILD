@@ -4,6 +4,7 @@ depends=()
 source=()
 # make this package platform specific. Supported platforms: linux, windows 
 platform='windows'
+elevated=true
 
 # All items of source will be downloaded and extracted (when necessary)
 # all downloaded (or extracted folders) are stored inside ${sourced[@]}

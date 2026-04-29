@@ -42,7 +42,7 @@ packages_by_name = {pkg.name: pkg for pkg in all_packages}
 if args["unconfigure"]:
     for name in args["unconfigure"]:
         if name not in packages_by_name:
-            print(f'unknown health script "{name}"')
+            print(f'unknown health script "{name}" or already not configured')
             exit()
     selected_packages = [
         packages_by_name[pkg_name] for pkg_name in args["name"] + args["unconfigure"]
@@ -50,7 +50,7 @@ if args["unconfigure"]:
 elif args["name"]:
     for name in args["name"]:
         if name not in packages_by_name:
-            print(f'unknown health script "{name}"')
+            print(f'unknown health script "{name}" or already configured')
             exit()
     selected_packages = [
         packages_by_name[pkg_name] for pkg_name in args["name"]
