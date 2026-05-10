@@ -15,12 +15,13 @@ def get_package_managers() -> list[PackageManager]:
 
     if not _package_managers:
         from archdots.packages.managers.custom import Custom
+        from archdots.packages.managers.health import Health
         from archdots.packages.managers.pacman import Pacman
         from archdots.packages.managers.scoop import Scoop
         from archdots.packages.managers.winget import Winget
 
         _package_managers = [
-            pm for pm in [Pacman(), Custom(), Winget(), Scoop()] if pm.is_available()
+            pm for pm in [Pacman(), Custom(), Health(), Winget(), Scoop()] if pm.is_available()
         ]
 
     return _package_managers

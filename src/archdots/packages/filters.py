@@ -5,7 +5,7 @@ import re
 from typing import Any
 
 from archdots.packages.managers.base import PackageManager
-from archdots.packages.managers import Custom
+from archdots.packages.managers import Custom, Health
 from archdots.packages.managers.registry import get_package_managers
 from archdots.config.manager import ConfigManager
 from archdots.ui.console import warn_console
@@ -14,6 +14,7 @@ from archdots.ui.console import warn_console
 _WARNED_CONFLICTS: set[tuple[str, str, str]] = set()
 _WARNED_INVALID_REGEX: set[str] = set()
 
+_IGNORED_PMS = [Health().name]
 
 def _match_pattern(pkg_name: str, pattern: str) -> bool:
     if pattern.startswith("re:"):
@@ -86,7 +87,7 @@ def get_unmanaged_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     warn_pkg_ignored_conflicts(config)
 
     package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers}
+    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers if pm.name not in _IGNORED_PMS}
 
     unmanaged_packages: dict[PackageManager, list[str]] = {}
     for pm in installed_pkgs_by_pm:
@@ -106,7 +107,7 @@ def get_managed_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     warn_pkg_ignored_conflicts(config)
 
     package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers}
+    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers if pm.name not in _IGNORED_PMS}
 
     installed_packages: dict[PackageManager, list[str]] = {}
     for pm in installed_pkgs_by_pm:
@@ -125,7 +126,7 @@ def get_pending_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     warn_pkg_ignored_conflicts(config)
 
     package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers}
+    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers if pm.name not in _IGNORED_PMS}
     custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo)]
     custom_pm_name = Custom().name
 

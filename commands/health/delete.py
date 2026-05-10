@@ -59,8 +59,12 @@ if not selected_packages or not Confirm.ask(
 ):
     exit()
 
+uninstall_first = False
+if any(pkg.check(supress_output=True) for pkg in selected_packages):
+    uninstall_first = Confirm.ask(title("Do you want to unconfigure the active health scripts before deleting?"), default=True)
+
 for pkg in selected_packages:
-    if pkg.check(supress_output=True):
+    if uninstall_first and pkg.check(supress_output=True):
         print(f'[red]unconfiguring "{pkg.name}"')
         if not pkg.uninstall():
             raise PackageException(f"Could not unconfigure {pkg.name}")

@@ -11,8 +11,8 @@ from archdots.utils.decorators import memoize
 
 
 class Custom(PackageManager):
-    def __init__(self) -> None:
-        super().__init__("custom")
+    def __init__(self, name: str = "custom") -> None:
+        super().__init__(name)
 
     @staticmethod
     def _filter_custom_packages(

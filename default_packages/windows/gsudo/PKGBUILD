@@ -12,17 +12,17 @@ platform='windows'
 # $PKGPATH has the path to folder containing this file 
 
 # This function install the package on the system
-install() {
+install_powershell() {
   
 }
 
 # This function uninstall the package from the system
-uninstall() {
+uninstall_powershell() {
   
 }
 
 # This function should end with exit code 0 when the package is installed on system
 # and end with exit code 1 when it is uninstalled
-check() {
+check_powershell() {
   which gsudo
 }

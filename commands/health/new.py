@@ -13,6 +13,7 @@ from archdots.packages.dependencies import are_custom_packages_valid
 from archdots.packages.managers import Custom
 from archdots.packages.managers.registry import get_package_managers
 from archdots.utils.editors import default_editor
+from archdots.utils.templates import generate_pkgbuild_template
 from rich import print
 from rich.prompt import Prompt, Confirm
 from archdots.core.constants import HEALTH_FOLDER, PLATFORM
@@ -77,43 +78,17 @@ new_pkg = Package(
 
 are_custom_packages_valid([*all_packages, new_pkg])
 
-new_pkgbuild = f'''
-description='{pkg_description.replace("'", "'\"'\"'")}'
-url=''
-depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
-source=()
-# source_on_check=false
-# asks user for elevated privileges
-# elevated=false
-# make this health script platform specific. Supported platforms: linux, windows 
-platform='{PLATFORM}'
-
-# All items of source will be downloaded and extracted (when necessary)
-# all downloaded (or extracted folders) are stored inside ${{sourced[@]}}
-# This script is ran inside a folder over ~/.cache/archdots/pkgname, where all sources are downloaded
-#
-# $PKGPATH has the path to folder containing this file 
-
-# This function is used to configure the health script
-install() {{
-    echo "message from install() of {pkg_name}" 
-}}
-
-# This function is used to unconfigure the health script
-uninstall() {{
-    echo "message from uninstall() of {pkg_name}" 
-}}
-
-# This function should end with exit code 0 when the health script is configured
-# and end with exit code 1 when it is unconfigured
-check() {{
-    echo "message from check() of {pkg_name}" 
-}}
-'''
+new_pkgbuild = generate_pkgbuild_template(
+    pkg_name=pkg_name,
+    pkg_description=pkg_description,
+    pkg_dependencies=pkg_dependencies,
+    platform=PLATFORM,
+    is_health_script=True,
+)
 
 os.makedirs(Path(HEALTH_FOLDER) / pkg_name, exist_ok=True)
 with open(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
-    f.write(new_pkgbuild.strip())
+    f.write(new_pkgbuild + "\n")
 
 if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
     default_editor(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD")

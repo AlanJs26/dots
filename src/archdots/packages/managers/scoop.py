@@ -71,21 +71,40 @@ class Scoop(PackageManager):
     def install(self, packages: list[str], force=True) -> bool:
         if not packages:
             return True
-        from os import system
+        import subprocess
+
+        # Ensure we know existing buckets to avoid slow add commands if already present
+        installed_buckets = []
+        try:
+            buckets_output = subprocess.check_output(
+                ["powershell", "-Command", "scoop bucket list | Select-Object -Skip 2 | % { ($_ -split ' +')[0] }"],
+                text=True,
+                encoding="utf-8",
+                stderr=subprocess.DEVNULL
+            )
+            installed_buckets = [b.strip() for b in buckets_output.splitlines() if b.strip()]
+        except Exception:
+            pass # Fallback to trying to add anyway if detection fails
 
         error_happened = False
         for package in packages:
-            error_happened = error_happened or system(f'scoop install "{package}"') != 0
+            if "/" in package:
+                bucket_name, _ = package.split("/", 1)
+                if bucket_name not in installed_buckets:
+                    subprocess.run(f'scoop bucket add "{bucket_name}"', shell=True)
+                    installed_buckets.append(bucket_name)
+
+            error_happened = error_happened or subprocess.run(f'scoop install "{package}"', shell=True).returncode != 0
         return not error_happened
 
     def uninstall(self, packages: list[str]) -> bool:
         if not packages:
             return True
-        from os import system
+        import subprocess
 
         error_happened = False
         for package in packages:
-            error_happened = error_happened or system(f'scoop uninstall "{package}"') != 0
+            error_happened = error_happened or subprocess.run(f'scoop uninstall "{package}"', shell=True).returncode != 0
         return not error_happened
 
     def is_available(self) -> bool:

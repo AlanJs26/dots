@@ -4,10 +4,22 @@ from pathlib import Path
 from shutil import which
 
 from archdots.core.constants import PLATFORM
-from archdots.ui.console import print_title
+from archdots.ui.console import print_title, warn_console
 from archdots.core.exceptions import PackageException
 
-PWSH_AVAILABLE = which("pwsh") is not None
+if PLATFORM == "windows":
+    _git_sh = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git" / "bin" / "sh.exe"
+    if _git_sh.exists():
+        BASH_CMD = f'"{_git_sh}"'
+    else:
+        _bash = which("bash") or which("sh")
+        if _bash:
+            BASH_CMD = f'"{_bash}"'
+        else:
+            warn_console.print("No valid bash/sh shell found (looked in Program Files/Git/bin and PATH). Execution may fail.")
+            BASH_CMD = "sh"
+else:
+    BASH_CMD = "bash"
 
 
 def run_pkgbuild_function(package, name: str, supress_output=False, sources: list[str] | None = None) -> int:
@@ -16,46 +28,23 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
     os.makedirs(package.get_cache_folder(), exist_ok=True)
     sudo = 'sudo' if PLATFORM == 'linux' else 'gsudo'
 
-    if PLATFORM == "linux":
-        bashdict = ""
-        if sources:
-            for i, folder in enumerate(sources):
-                bashdict += f'["{i}"]="{folder}" '
-            bashdict = "declare -A sourced=(" + bashdict.strip() + ")"
-
-        command = f"""
-        PKGPATH=\"{os.path.dirname(package.pkgbuild)}\"
-        {bashdict}
-        source {os.path.abspath(package.pkgbuild)}
-        {sudo if package.elevated else ''} {name}
-        """
-
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            executable=None,
-            stdout=subprocess.DEVNULL if supress_output else None,
-            stderr=subprocess.DEVNULL if supress_output else None,
-            cwd=package.get_cache_folder(),
+    from archdots.package_parser import parse_from_path
+    _, parsed_functions = parse_from_path(package.pkgbuild)
+    
+    found_function = next(filter(lambda func: func.name in (name, f"{name}_powershell"), parsed_functions), None)
+    if not found_function:
+        raise PackageException(
+            f'tried to executed an unknown PKGBUILD function "{name}"',
+            package,
         )
-    else:
+
+    if found_function.name.endswith("_powershell"):
         hashtable = ""
         if sources:
             hashtable = "$sourced = @{\n"
             for i, folder in enumerate(sources):
                 hashtable += f'"{i}" = "{folder}"\n'
             hashtable += "}"
-
-        from archdots.package_parser import parse_from_path
-
-        _, parsed_functions = parse_from_path(package.pkgbuild)
-        
-        found_function = next(filter(lambda func: func.name == name, parsed_functions), None)
-        if not found_function:
-            raise PackageException(
-                f'tried to executed an unknown PKGBUILD function "{name}"',
-                package,
-            )
 
         file_command_path = Path(package.get_cache_folder()) / f"{name}.ps1"
         with open(file_command_path, "w", encoding="utf-8") as f:
@@ -83,11 +72,39 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
                 + f'$PKGPATH = "{os.path.dirname(package.pkgbuild)}"\n{hashtable}\n{found_function.content}'
             )
 
-        powershell_cmd = "pwsh" if PWSH_AVAILABLE else "powershell"
-        command = f"{sudo if package.elevated else ''} {powershell_cmd} -ExecutionPolicy ByPass -File {file_command_path.resolve()}"
+        powershell_cmd = which("pwsh") or which("powershell")
+        if not powershell_cmd:
+            warn_console.print("PowerShell (pwsh or powershell) not found. Execution may fail.")
+            powershell_cmd = "pwsh"
+        command = f"{sudo if package.elevated else ''} \"{powershell_cmd}\" -ExecutionPolicy ByPass -File \"{file_command_path.resolve()}\"".strip()
 
         process = subprocess.Popen(
-            ["cmd", "/c", command],
+            command,
+            shell=True,
+            executable=None,
+            stdout=subprocess.DEVNULL if supress_output else None,
+            stderr=subprocess.DEVNULL if supress_output else None,
+            cwd=package.get_cache_folder(),
+        )
+    else:
+        bashdict = ""
+        if sources:
+            for i, folder in enumerate(sources):
+                bashdict += f'["{i}"]="{folder}" '
+            bashdict = "declare -A sourced=(" + bashdict.strip() + ")"
+
+        file_command_path = Path(package.get_cache_folder()) / f"{name}.sh"
+        with open(file_command_path, "w", encoding="utf-8") as f:
+            # We fix line endings avoiding windows \r\n issues on bash
+            content = found_function.content.replace('\r\n', '\n')
+            f.write(f'PKGPATH="{os.path.dirname(package.pkgbuild).replace(os.sep, "/")}"\n{bashdict}\n\n{content}\n')
+
+        command = f"{sudo if package.elevated else ''} {BASH_CMD} \"{file_command_path.resolve()}\"".strip()
+
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            executable=None,
             stdout=subprocess.DEVNULL if supress_output else None,
             stderr=subprocess.DEVNULL if supress_output else None,
             cwd=package.get_cache_folder(),

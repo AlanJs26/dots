@@ -2,6 +2,7 @@
 
 from archdots.packages.managers.base import PackageManager
 from archdots.packages.managers.custom import Custom
+from archdots.packages.managers.health import Health
 from archdots.packages.managers.pacman import Pacman
 from archdots.packages.managers.scoop import Scoop
 from archdots.packages.managers.winget import Winget, WingetResultItem
@@ -14,6 +15,7 @@ from archdots.packages.managers.registry import (
 __all__ = [
     "PackageManager",
     "Custom",
+    "Health",
     "Pacman",
     "Winget",
     "Scoop",

@@ -13,7 +13,7 @@ elevated=true
 # $PKGPATH has the path to folder containing this file 
 
 # This function install the package on the system
-install() {
+install_powershell() {
     if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         Write-Warning 'Chocolatey installation requires administrator privileges. Skipping.'
         return
@@ -23,7 +23,7 @@ install() {
 }
 
 # This function uninstall the package from the system
-uninstall() {
+uninstall_powershell() {
     if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         Write-Warning 'Chocolatey uninstallation requires administrator privileges. Skipping.'
         return
@@ -123,7 +123,7 @@ uninstall() {
 
 # This function should end with exit code 0 when the package is installed on system
 # and end with exit code 1 when it is uninstalled
-check() {
+check_powershell() {
   which choco
 }
 

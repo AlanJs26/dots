@@ -21,6 +21,8 @@ from archdots.packages.managers.registry import get_package_managers
 from archdots.packages.filters import (
     is_package_ignored,
     warn_pkg_ignored_conflicts,
+    get_unmanaged_packages,
+    get_pending_packages,
 )
 from archdots.config.manager import ConfigManager
 from archdots.ui.console import print_title, title, warn_console
@@ -165,59 +167,25 @@ class Row(NamedTuple):
 
 
 pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
-installed_pkgs_by_pm: dict[str, list[str]] = {
-    pm.name: pm.get_installed(use_memo=True) for pm in package_managers
-}
 
 config = ConfigManager().load()
-warn_pkg_ignored_conflicts(config)
-
-if "pkgs" not in config:
-    config["pkgs"] = {}
 
 custom_pm_name = Custom().name
 custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
 
-unmanaged_packages: dict[str, list[str]] = {}
-pending_packages: dict[str, list[str]] = {}
-
-for pm_name, installed_pkgs in installed_pkgs_by_pm.items():
-    configured_pkgs = [
-        pkg
-        for pkg in config["pkgs"].get(pm_name, [])
-        if isinstance(pkg, str)
-    ]
-
-    unmanaged_packages[pm_name] = [
-        pkg
-        for pkg in sorted(set(installed_pkgs).difference(configured_pkgs))
-        if not is_package_ignored(config, pm_name, pkg)
-    ]
-
-    obscured_packages: set[str] = set()
-    if pm_name != custom_pm_name:
-        obscured_packages = set(custom_pkg_names).intersection(configured_pkgs)
-
-    pending_packages[pm_name] = [
-        pkg
-        for pkg in sorted(
-            set(configured_pkgs)
-            .difference(installed_pkgs)
-            .difference(obscured_packages)
-        )
-        if not is_package_ignored(config, pm_name, pkg)
-    ]
+unmanaged_dict = get_unmanaged_packages()
+pending_dict = get_pending_packages()
 
 rows: list[Row] = []
-for pm, packages in unmanaged_packages.items():
+for pm, packages in unmanaged_dict.items():
     for package in packages:
-        rows.append(Row(Kind.UNMANAGED, pm, package, Status.UNREVIEWED))
+        rows.append(Row(Kind.UNMANAGED, pm.name, package, Status.UNREVIEWED))
 
-for pm, packages in pending_packages.items():
+for pm, packages in pending_dict.items():
     for package in packages:
-        rows.append(Row(Kind.PENDING, pm, package, Status.UNREVIEWED))
+        rows.append(Row(Kind.PENDING, pm.name, package, Status.UNREVIEWED))
 
-lost_packages = set(custom_pkg_names).difference(installed_pkgs_by_pm.get(custom_pm_name, []))
+lost_packages = set(custom_pkg_names).difference(Custom().get_installed(use_memo=True))
 if "pkgs" in config and "custom" in config["pkgs"]:
     lost_packages = lost_packages.difference(config["pkgs"]["custom"])
 lost_packages = {

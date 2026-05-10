@@ -8,23 +8,23 @@ ARCHDOTS
 args = args  # type: ignore
 
 from rich import print
+from archdots.packages.managers.health import Health
 from archdots.ui.console import print_title
-from archdots.core.constants import HEALTH_FOLDER
-from archdots.packages.package import get_packages
 from archdots.packages.managers import Custom
 from archdots.packages.managers.registry import get_package_managers
-from archdots.packages.filters import is_package_ignored, warn_pkg_ignored_conflicts
+from archdots.packages.filters import (
+    is_package_ignored,
+    get_managed_packages,
+    get_unmanaged_packages,
+    get_pending_packages,
+)
 from archdots.config.manager import ConfigManager
 import subprocess
 
+from archdots.ui.progress import progress_decorator
+
 package_managers = get_package_managers()
-installed_pkgs_by_pm = {pm.name: pm.get_installed() for pm in package_managers}
-
-custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
-custom_pm_name = Custom().name
-
 config = ConfigManager().load()
-warn_pkg_ignored_conflicts(config)
 
 
 def run(text: str):
@@ -41,75 +41,58 @@ def run(text: str):
     return stdout
 
 
-if "pkgs" not in config:
-    config["pkgs"] = {}
+managed_packages = sum(len(pkgs) for pkgs in get_managed_packages().values())
+unmanaged_packages = sum(len(pkgs) for pkgs in get_unmanaged_packages().values())
+pending_packages = sum(len(pkgs) for pkgs in get_pending_packages().values())
 
-unmanaged_packages = 0
-managed_packages = 0
-pending_packages = 0
 ignored_packages = 0
-lost_packages = 0
-for pm_name in installed_pkgs_by_pm:
-    if pm_name not in config["pkgs"]:
-        config["pkgs"][pm_name] = []
-    installed_set = set(installed_pkgs_by_pm[pm_name])
-    configured_set = set(config["pkgs"][pm_name])
+for pm in package_managers:
+    if pm.name == "health":
+        continue
+    installed = set(pm.get_installed(use_memo=True))
+    configured = set(config.get("pkgs", {}).get(pm.name, []))
 
-    managed_set = installed_set.intersection(configured_set)
-    unmanaged_set = installed_set - configured_set
+    obscured = set()
+    if pm.name != "custom":
+        obscured = set(pkg.name for pkg in Custom().get_packages(True)).intersection(
+            configured
+        )
 
-    ignored_installed_set = {
-        pkg for pkg in installed_set if is_package_ignored(config, pm_name, pkg)
-    }
+    pending = configured - installed - obscured
 
-    managed_packages += len(managed_set - ignored_installed_set)
-    unmanaged_packages += len(unmanaged_set - ignored_installed_set)
+    for pkg in installed.union(pending):
+        if is_package_ignored(config, pm.name, pkg):
+            ignored_packages += 1
 
-    obscured_packages = set()
-    if pm_name != custom_pm_name:
-        obscured_packages = set(custom_pkg_names).intersection(config["pkgs"][pm_name])
-
-    pending_set = configured_set - installed_set - obscured_packages
-    ignored_pending_set = {
-        pkg for pkg in pending_set if is_package_ignored(config, pm_name, pkg)
-    }
-    pending_packages += len(pending_set - ignored_pending_set)
-
-    ignored_packages += len(ignored_installed_set)
-    ignored_packages += len(ignored_pending_set)
-
-lost_candidates_set = set(pkg.name for pkg in Custom().get_packages(True)).difference(
-    Custom().get_installed(True)
+lost_candidates = (
+    set(pkg.name for pkg in Custom().get_packages(True))
+    .difference(Custom().get_installed(True))
+    .difference(config.get("pkgs", {}).get("custom", []))
 )
-if "pkgs" in config and "custom" in config["pkgs"]:
-    lost_candidates_set = lost_candidates_set.difference(config["pkgs"]["custom"])
 
-ignored_lost_packages_set = {
-    pkg
-    for pkg in lost_candidates_set
-    if is_package_ignored(config, custom_pm_name, pkg)
-}
-
-lost_packages_set = {
-    pkg
-    for pkg in lost_candidates_set
-    if not is_package_ignored(config, custom_pm_name, pkg)
-}
-ignored_packages += len(ignored_lost_packages_set)
-
-lost_packages = len(lost_packages_set)
+lost_packages = 0
+for pkg in lost_candidates:
+    if is_package_ignored(config, "custom", pkg):
+        ignored_packages += 1
+    else:
+        lost_packages += 1
 
 
-health_scripts = get_packages(HEALTH_FOLDER)
-unconfigured_scripts = [
-    pkg for pkg in health_scripts if not pkg.check(supress_output=True)
-]
+@progress_decorator("health scripts")
+def get_health_scripts():
+    pkgs = Health().get_packages()
+    return pkgs, [
+        pkg for pkg in pkgs if not pkg.check(supress_output=True)
+    ]
+
+
+health_scripts, unconfigured_scripts = get_health_scripts()
 
 print_title("Packages")
 
 
 def print_aligned(key, value):
-    print("[cyan]{: <10}[/]: [green]{}".format(key, value))
+    print("[cyan]{: <11}[/]: [green]{}".format(key, value))
 
 
 print_aligned("managed", managed_packages)
@@ -121,19 +104,25 @@ print_aligned("ignored", ignored_packages)
 stdout = run("chezmoi managed")
 managed_files = len(stdout.splitlines())
 
-stdout = run(
-    r"""
-from_git="$(chezmoi git -- diff --cached --numstat | awk '{print $3}' | rg 'dot_' -r '.' --passthrough | sed 's/private_|executable_//g')"
-from_chezmoi="$(chezmoi diff | rg 'diff --git' | rg 'a/(.+) b/' -o -r '$1')"
+import re
 
-echo -e "$from_git\n$from_chezmoi" | awk NF | sort -u
-    """
-)
-pending_files = len(stdout.splitlines())
+git_stdout = run("chezmoi git -- diff --cached --name-only")
+from_git = [
+    line.strip().replace("dot_", ".").replace("private_", "").replace("executable_", "")
+    for line in git_stdout.splitlines()
+    if line.strip()
+]
+
+chezmoi_stdout = run("chezmoi diff")
+from_chezmoi = re.findall(r"diff --git a/(.+?) b/", chezmoi_stdout)
+
+pending_files = len(set(from_git + from_chezmoi))
 
 
-print("[cyan]::[/] Files")
+print("\n[cyan]::[/] Files")
 print_aligned("managed", managed_files)
 print_aligned("pending", pending_files)
 
-
+print("\n[cyan]::[/] Health")
+print_aligned("configured", len(health_scripts) - len(unconfigured_scripts))
+print_aligned("pending", len(unconfigured_scripts))

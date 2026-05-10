@@ -74,8 +74,14 @@ def package_from_path(folder_path: str | Path, package_cls):
     else:
         fields_dict, funcs = parse_package_lark(pkgbuild_path)
 
+    funcs = [f.removesuffix('_powershell') for f in funcs]
+
     known_fields = ["depends", "description", "source", "url"]
-    known_funcs = ["check", "install", "uninstall"]
+    known_funcs = [
+        "check",
+        "install",
+        "uninstall",
+    ]
 
     if missing_fields := set(known_fields).difference(fields_dict.keys()):
         raise PackageException(
@@ -94,14 +100,20 @@ def package_from_path(folder_path: str | Path, package_cls):
         ("custom:" + dep if ":" not in dep else dep) for dep in fields_dict["depends"]
     ]
 
-    if "platform" in fields_dict and fields_dict["platform"] not in ["linux", "windows"]:
+    if "platform" in fields_dict and fields_dict["platform"] not in [
+        "linux",
+        "windows",
+    ]:
         raise PackageException(
             f'invalid platform: {fields_dict["platform"]}',
             pkg_name=pkg_name,
             pkgbuild=str(pkgbuild_path),
         )
 
-    if "elevated" in fields_dict and fields_dict["elevated"].lower() not in ["true", "false"]:
+    if "elevated" in fields_dict and fields_dict["elevated"].lower() not in [
+        "true",
+        "false",
+    ]:
         raise PackageException(
             f'invalid value for field elevated: {fields_dict["elevated"]}',
             pkg_name=pkg_name,
@@ -124,7 +136,9 @@ def get_packages(folder: str | Path, package_from_path_fn, ignore_platform=False
         dirs[:] = []
         filtered_packages.append(root)
 
-    packages = [package_from_path_fn(pkgbuild_path) for pkgbuild_path in filtered_packages]
+    packages = [
+        package_from_path_fn(pkgbuild_path) for pkgbuild_path in filtered_packages
+    ]
     if ignore_platform:
         return packages
     return list(filter(lambda pkg: PLATFORM == pkg.platform, packages))
