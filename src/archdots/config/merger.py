@@ -1,6 +1,6 @@
 """Config file merging and transformation utilities."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
 from typing import Any
 
 
@@ -21,6 +21,10 @@ def iterdict_merge(
     """
     from deepmerge import always_merger
 
+    # We use a copy to avoid mutating the original during traversal
+    # but we must be careful with CommentedMap if we want to preserve it.
+    # However, iterdict_merge is mostly used for loading, where we merge
+    # imports into a final result.
     d_copy = d.copy()
     for k, v in d.items():
         if isinstance(v, dict):
@@ -73,6 +77,40 @@ def unfreeze(d: frozenset) -> Any:
     return list(unfreeze(v) for v in d)
 
 
+def update_in_place(target: Any, source: Any) -> None:
+    """Update target object in-place with data from source, preserving types.
+
+    Args:
+        target: Object to update (CommentedMap, CommentedSeq, dict, list)
+        source: Source data
+    """
+    if isinstance(target, MutableMapping) and isinstance(source, Mapping):
+        # Update keys in mapping
+        for key, value in source.items():
+            if key in target:
+                if isinstance(target[key], (MutableMapping, MutableSequence)) and isinstance(
+                    value, (Mapping, list)
+                ):
+                    update_in_place(target[key], value)
+                else:
+                    target[key] = value
+            else:
+                target[key] = value
+        
+        # Remove keys not in source (if target is meant to be a full sync)
+        # Note: In our config system, we usually only sync keys that are present.
+        # However, for full sync, we might need to delete.
+        for key in list(target.keys()):
+            if key not in source:
+                del target[key]
+                
+    elif isinstance(target, MutableSequence) and isinstance(source, list):
+        # For sequences, a full replacement is often safer for comments 
+        # unless we want to try element matching.
+        # But ruamel sequences also have comments.
+        target[:] = source
+
+
 def iterdict_imports(
     config: dict[Any, Any],
     merged_config: dict[Any, Any],
@@ -97,12 +135,12 @@ def iterdict_imports(
         SettingsException: If config structure is invalid
     """
     from pathlib import Path
-    import yaml
     from itertools import chain
     from archdots.core.exceptions import SettingsException
     from archdots.config.loader import iter_imports
+    from archdots.config.yaml_instance import yaml_rt
 
-    all_configs = [config]
+    all_configs: list[Any] = [config]
     all_config_paths = [config_path]
     if "import" in config:
         all_config_paths = list(
@@ -114,15 +152,17 @@ def iterdict_imports(
         )
         all_configs = list(
             map(
-                lambda p: yaml.safe_load(p.read_text()),
+                lambda p: yaml_rt.load(p.read_text()),
                 all_config_paths,
             )
         )
 
+    # Apply new keys to the root config if they are completely new
     for k, v in new_merged_config.items():
-        if k in merged_config:
-            continue
-        config[k] = v
+        if k not in merged_config:
+            config[k] = v
+
+    updated_main_config = config
 
     for current_config, current_config_path in zip(all_configs, all_config_paths):
         if not isinstance(current_config, dict):
@@ -130,44 +170,35 @@ def iterdict_imports(
                 f'Invalid import. Contents of "{current_config_path}" is not a valid config'
             )
 
-        for k, v in current_config.copy().items():
+        # Mutate current_config in-place
+        for k in list(current_config.keys()):
             if k == "import":
                 continue
-            elif k not in new_merged_config:
+            
+            if k not in new_merged_config:
                 del current_config[k]
-            elif isinstance(v, dict):
-                if not isinstance(new_merged_config[k], dict):
-                    current_config[k] = new_merged_config[k]
-                    continue
-                if k not in merged_config:
-                    continue
-                current_config[k] = iterdict_imports(
-                    v,
-                    merged_config[k],
-                    new_merged_config[k],
-                    current_config_path,
-                )
-            elif isinstance(v, list):
-                if not isinstance(new_merged_config[k], list):
-                    current_config[k] = new_merged_config[k]
-                    continue
-
-                new_merged_items = freeze(new_merged_config[k])
-                keeped_items = frozenset(freeze(v)).intersection(new_merged_items)
-
-                if k in merged_config:
-                    new_items = new_merged_items.difference(freeze(merged_config[k]))
-                else:
-                    new_items = new_merged_items
-
-                current_config[k] = [*unfreeze(keeped_items), *unfreeze(new_items)]
-                new_merged_config[k] = unfreeze(
-                    new_merged_items - keeped_items - new_items
-                )
             else:
-                current_config[k] = new_merged_config[k]
+                v = current_config[k]
+                new_v = new_merged_config[k]
+                
+                if isinstance(v, (dict, list)) and isinstance(new_v, (dict, list)):
+                    # For complex structures, we check if they were in the previous merged state
+                    if k in merged_config:
+                        # Recursively update
+                        if isinstance(v, dict) and isinstance(new_v, dict):
+                            update_in_place(v, new_v)
+                        else:
+                            current_config[k] = new_v
+                    else:
+                        current_config[k] = new_v
+                else:
+                    current_config[k] = new_v
+
+        if current_config_path == config_path:
+            updated_main_config = current_config
 
         with open(current_config_path, "w") as f:
-            yaml.dump(current_config, f)
+            yaml_rt.dump(current_config, f)
 
-    return config
+    return updated_main_config
+

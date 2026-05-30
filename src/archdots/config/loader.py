@@ -1,13 +1,13 @@
 """Config loading and import resolution."""
 
 import os
-import yaml
 from pathlib import Path
 from typing import Any, Generator
 
 from archdots.core.constants import CONFIG_FOLDER, MODULE_PATH
 from archdots.core.exceptions import SettingsException
 from archdots.ui.console import warn_console
+from archdots.config.yaml_instance import yaml_rt
 
 
 def iter_imports(imports_any: Any, recursive: bool = False) -> Generator[Path, None, None]:
@@ -49,7 +49,7 @@ def iter_imports(imports_any: Any, recursive: bool = False) -> Generator[Path, N
 
         if recursive:
             with open(import_path, "r") as f:
-                imported_config = yaml.safe_load(f)
+                imported_config = yaml_rt.load(f)
                 if "import" in imported_config:
                     yield from (Path(p) for p in imported_config["import"])
 
@@ -87,7 +87,7 @@ def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
             raise SettingsException("invalid config file")
         
         with open(next_import, "r") as f:
-            next_config = yaml.safe_load(f)
+            next_config = yaml_rt.load(f)
 
         if "import" in next_config:
             if isinstance(next_config["import"], str):
@@ -122,6 +122,7 @@ def read_config_file(config_path: Path) -> dict[str, Any]:
             f.write(default_config)
 
     with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        config = yaml_rt.load(f)
     
-    return config if isinstance(config, dict) else {}
+    return config if isinstance(config, (dict, Any)) else {}
+

@@ -16,10 +16,17 @@ def run_command(args: Namespace, metadata_dict: MetadataDict, parser_dict: Parse
 
     args_dict: dict[str, Any] = vars(args)
     while (current_command := os.path.basename(path)) in args_dict:
-        if not args_dict[current_command]:
+        subcommand = args_dict[current_command]
+        if not subcommand or isinstance(subcommand, list):
+            break
+        
+        # Check if the next part in the path exists before committing to it.
+        # This prevents including positional arguments in the path.
+        next_path = os.path.join(path, subcommand)
+        if next_path not in metadata_dict and next_path not in parser_dict:
             break
 
-        path = os.path.join(path, args_dict[current_command])
+        path = next_path
         del args_dict[current_command]
 
     script_path, parser = parser_dict[path]

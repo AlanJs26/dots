@@ -1,12 +1,13 @@
 """Config file I/O and persistence."""
 
-import yaml
+import os
 from pathlib import Path
 from typing import Any
 
 from archdots.core.constants import CONFIG_FOLDER, MODULE_PATH
 from archdots.config.loader import read_config_file
 from archdots.config.merger import iterdict_imports
+from archdots.config.yaml_instance import yaml_rt
 
 
 def save_config(data: Any) -> None:
@@ -27,9 +28,9 @@ def save_config(data: Any) -> None:
     merged_config = ConfigManager().load(use_cache=False)
 
     with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+        config = yaml_rt.load(f)
 
     new_config = iterdict_imports(config, merged_config, data, config_path)
 
     with open(config_path, "w") as f:
-        f.write(yaml.dump(new_config))
+        yaml_rt.dump(new_config, f)

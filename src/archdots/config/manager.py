@@ -22,6 +22,7 @@ from archdots.config.loader import (
     compare_mtime_with_imports,
 )
 from archdots.config.merger import iterdict_merge, iterdict_imports
+from archdots.config.yaml_instance import yaml_rt
 
 
 class ConfigManager(metaclass=SingletonMeta):
@@ -62,7 +63,7 @@ class ConfigManager(metaclass=SingletonMeta):
             and not compare_mtime_with_imports(config, self._cache_path.lstat().st_mtime)
         ):
             with open(self._cache_path, "r") as f:
-                cached_config = yaml.safe_load(f)
+                cached_config = yaml_rt.load(f)
                 if isinstance(cached_config, dict):
                     return cached_config
                 warn_console.print("warning: invalid cached config")
@@ -77,7 +78,7 @@ class ConfigManager(metaclass=SingletonMeta):
             merged_value = {}
             for import_path in iter_imports(value):
                 with open(import_path, "r") as f:
-                    imported_config = yaml.safe_load(f)
+                    imported_config = yaml_rt.load(f)
                     if not isinstance(imported_config, dict):
                         raise SettingsException(
                             f'Invalid import. Contents of "{import_path}" is not a valid config'
@@ -90,7 +91,7 @@ class ConfigManager(metaclass=SingletonMeta):
 
         # Merge with defaults
         with open(Path(MODULE_PATH) / "chezmoi_template/archdots/config.yaml", "r") as f:
-            default_config = yaml.safe_load(f) or {}
+            default_config = yaml_rt.load(f) or {}
 
         self._config_memo = {**default_config, **config}
         self._last_mtime = config_path.lstat().st_mtime
@@ -98,7 +99,7 @@ class ConfigManager(metaclass=SingletonMeta):
         # Save to cache
         os.makedirs(CACHE_FOLDER, exist_ok=True)
         with open(self._cache_path, "w") as f:
-            yaml.safe_dump(self._config_memo, f)
+            yaml_rt.dump(self._config_memo, f)
 
         return self._config_memo
 
@@ -115,13 +116,14 @@ class ConfigManager(metaclass=SingletonMeta):
         merged_config = self.load(use_cache=False)
 
         with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
+            config = yaml_rt.load(f)
 
         new_config = iterdict_imports(config, merged_config, data, config_path)
 
         with open(config_path, "w") as f:
-            f.write(yaml.dump(new_config))
+            yaml_rt.dump(new_config, f)
 
         # Invalidate cache after save
         self._config_memo = {}
         self._last_mtime = 0
+
