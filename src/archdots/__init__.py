@@ -1,10 +1,11 @@
 from pathlib import Path
 import json
 import os
-from dacite.core import from_dict
+from shutil import which
 
-from archdots.schema import Metadata, ExtendedJSONEncoder
-from archdots.exceptions import (
+from archdots.schema import ExtendedJSONEncoder
+from archdots.cli.cache import load_cached_metadata, save_parser_cache
+from archdots.core.exceptions import (
     CommandException,
     GuiException,
     PackageManagerException,
@@ -12,7 +13,7 @@ from archdots.exceptions import (
     ParseException,
     SettingsException,
 )
-from archdots.constants import (
+from archdots.core.constants import (
     CHEZMOI_FOLDER,
     CONFIG_FOLDER,
     COMMANDS_FOLDER,
@@ -20,7 +21,7 @@ from archdots.constants import (
     CACHE_FOLDER,
     PLATFORM,
 )
-from archdots.argparsing import (
+from archdots.cli.runner import (
     run_command,
     build_command_tree,
     build_argparser,
@@ -31,6 +32,14 @@ def main():
     """
     archdots entrypoint
     """
+
+    if which("chezmoi") is None:
+        from archdots.ui.console import warn_console
+
+        warn_console.print(
+            'chezmoi is not installed. Run "dots init" to install it and setup your repository'
+        )
+
     try:
         roots = [
             str(Path(p) / Path(COMMANDS_FOLDER).name)
@@ -39,47 +48,43 @@ def main():
         command_tree = build_command_tree(roots, "archdots")
         command_tree_json = json.dumps(command_tree, cls=ExtendedJSONEncoder)
 
-        cached_command_tree_path = Path(CACHE_FOLDER) / "command_tree.json"
-        cached_metadata_dict_path = Path(CACHE_FOLDER) / "metadata_dict.json"
-
-        cached_metadata_dict = None
-        if cached_command_tree_path.is_file() and cached_metadata_dict_path.is_file():
-            with open(cached_command_tree_path, "r") as f:
-                cached_command_tree = f.read()
-
-            try:
-                if command_tree_json == cached_command_tree:
-                    with open(cached_metadata_dict_path, "r") as f:
-                        cached_metadata_dict = json.load(f)
-                    for k, v in cached_metadata_dict.items():
-
-                        cached_metadata_dict[k] = from_dict(Metadata, v)
-            except:
-                cached_metadata_dict = None
+        cached_metadata_dict = load_cached_metadata(CACHE_FOLDER, command_tree_json)
 
         parser, metadata_dict, parser_dict = build_argparser(
             command_tree, cached_metadata_dict
         )
-        parser.add_argument('--info', action='store_true', help="useful informations")
+        parser.add_argument("--clear-argument-cache", action="store_true", help="clear the cache used for optimizing the discovery of custom commands")
+        parser.add_argument("--info", action="store_true", help="useful informations")
 
         args = parser.parse_args()
 
+        if args.clear_argument_cache == True:
+            from rich import print
+            command_tree_cache_path = Path(CACHE_FOLDER) / 'command_tree.json'
+            metadata_dict_cache_path = Path(CACHE_FOLDER) / 'metadata_dict.json'
+            config_cache_path = Path(CACHE_FOLDER) / 'config.yaml.cache'
+            if command_tree_cache_path.is_file():
+                os.remove(command_tree_cache_path)
+            if metadata_dict_cache_path.is_file():
+                os.remove(metadata_dict_cache_path)
+            if config_cache_path.is_file():
+                os.remove(config_cache_path)
+            print("custom command's cache cleared")
+            exit()        
+
         if args.info == True:
             from rich import print
-            print('archdots\n')
-            print('{: <20}: {}'.format('config folder', CONFIG_FOLDER))
-            print('{: <20}: {}'.format('cache folder', CACHE_FOLDER))
-            print('{: <20}: {}'.format('chezmoi folder', CHEZMOI_FOLDER))
-            print('{: <20}: {}'.format('recognized platform', PLATFORM))
+
+            print("archdots\n")
+            print("{: <20}: {}".format("config folder", CONFIG_FOLDER))
+            print("{: <20}: {}".format("cache folder", CACHE_FOLDER))
+            print("{: <20}: {}".format("chezmoi folder", CHEZMOI_FOLDER))
+            print("{: <20}: {}".format("recognized platform", PLATFORM))
             exit()
 
         run_command(args, metadata_dict, parser_dict)
 
-        os.makedirs(CACHE_FOLDER, exist_ok=True)
-        with open(cached_command_tree_path, "w") as f:
-            f.write(command_tree_json)
-        with open(cached_metadata_dict_path, "w") as f:
-            json.dump(metadata_dict, f, cls=ExtendedJSONEncoder)
+        save_parser_cache(CACHE_FOLDER, command_tree_json, metadata_dict)
 
     except (
         PackageException,

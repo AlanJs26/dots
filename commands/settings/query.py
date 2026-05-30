@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: query settings using jq syntax
 arguments:
@@ -16,11 +16,11 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.settings import read_config
+from archdots.config.manager import ConfigManager
 import yaml
 import os
 
-yaml_config = yaml.dump(read_config())
+yaml_config = yaml.dump(ConfigManager().load())
 
 extra_args = ""
 if args["raw"]:
@@ -34,3 +34,5 @@ cat <<EOF
 EOF
 ) |yq '{args['input']}' {extra_args}"""
 )
+
+

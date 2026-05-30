@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: sync packages
 ARCHDOTS
@@ -9,16 +9,23 @@ args = args  # type: ignore
 
 import sys
 from rich import print
-from archdots.constants import MODULE_PATH
-from archdots.package_manager import PackageManager, package_managers, Custom
-from archdots.settings import read_config
-from archdots.console import title, warn_console, print_title
+from archdots.core.constants import MODULE_PATH
+from archdots.packages.managers import PackageManager, Custom
+from archdots.packages.managers.registry import get_package_managers
+from archdots.packages.filters import (
+    get_pending_packages,
+    get_unmanaged_packages,
+    is_package_ignored,
+)
+from archdots.config.manager import ConfigManager
+from archdots.ui.console import title, warn_console, print_title
 from rich.prompt import Confirm
 import importlib.util
 from pathlib import Path
 import os
 
-config = read_config()
+config = ConfigManager().load()
+package_managers = get_package_managers()
 
 if "pkgs" not in config:
     print("there is no pkgs configured", file=sys.stderr)
@@ -30,21 +37,20 @@ packages_by_pm: dict[str, list[str]] = {
 pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
 
 custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
+custom_pm_name = Custom().name
 
-pending_packages: dict[str, list[str]] = {}
+pending_packages = {
+    pm.name: pkgs for pm, pkgs in get_pending_packages(use_memo=True).items()
+}
 flatten_pending_packages: list[str] = []
 all_obscured_packages: list[str] = []
 for pm in packages_by_pm:
     if pm not in config["pkgs"]:
         continue
     obscured_packages = set()
-    if pm != Custom().name:
+    if pm != custom_pm_name:
         obscured_packages = set(custom_pkg_names).intersection(config["pkgs"][pm])
         all_obscured_packages.extend(f"{pm}:{pkg}" for pkg in obscured_packages)
-
-    pending_packages[pm] = list(
-        set(config["pkgs"][pm]) - set(packages_by_pm[pm]) - obscured_packages
-    )
     flatten_pending_packages.extend(f"{pm}:{pkg}" for pkg in pending_packages[pm])
 
 if all_obscured_packages:
@@ -63,11 +69,11 @@ if any(pkgs for pkgs in pending_packages.values()):
             print()
             pm_by_name[pm_name].install(packages)
 
-unmanaged_packages: list[str] = []
-for pm in config["pkgs"]:
-    if pm not in packages_by_pm:
-        continue
-    unmanaged_packages.extend(set(packages_by_pm[pm]) - set(config["pkgs"][pm]))
+unmanaged_packages = [
+    f"{pm.name}:{pkg}"
+    for pm, pkgs in get_unmanaged_packages(use_memo=True).items()
+    for pkg in pkgs
+]
 
 if unmanaged_packages and Confirm.ask(
     title("there are unmanaged packages. Review?"), default=True  # type: ignore
@@ -85,6 +91,11 @@ else:
     )
     if "custom" in config["pkgs"]:
         lost_packages = lost_packages.difference(config["pkgs"]["custom"])
+    lost_packages = {
+        pkg
+        for pkg in lost_packages
+        if not is_package_ignored(config, custom_pm_name, pkg)
+    }
 
     if lost_packages:
         warn_console.print(
@@ -96,3 +107,5 @@ else:
 
 if not any(pkgs for pkgs in pending_packages.values()) and not unmanaged_packages:
     print("[green]Already Synced")
+
+

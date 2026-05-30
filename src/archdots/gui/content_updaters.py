@@ -3,14 +3,15 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject
 
-from archdots.package_manager import Custom, PackageManager, check_packages
-from archdots.exceptions import GuiException
-from archdots.package import Package
-from archdots.package_utils import (
+from archdots.core.exceptions import GuiException
+from archdots.packages.managers import Custom, PackageManager
+from archdots.packages.package import Package
+from archdots.packages.filters import (
     get_managed_packages,
     get_pending_packages,
     get_unmanaged_packages,
 )
+from archdots.packages.status import check_packages
 
 
 def findChild(root: QObject, objectName: str) -> QObject:

@@ -1,0 +1,12 @@
+.venv
+*.venv
+./**/.venv
+
+.git
+*.git
+./**/.git
+
+__pycache__
+*__pycache__*
+./**/__pycache__
+

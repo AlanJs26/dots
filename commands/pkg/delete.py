@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: delete a custom package
 arguments:
@@ -13,17 +13,17 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.console import print_title, title
-from archdots.exceptions import PackageException
-from archdots.package_manager import Custom
+from archdots.ui.console import print_title, title
+from archdots.core.exceptions import PackageException
+from archdots.packages.managers import Custom
 from rich import print
 from rich.prompt import Confirm
-from archdots.constants import CONFIG_FOLDER
+from archdots.core.constants import CONFIG_FOLDER
 from pathlib import Path
 
 import shutil
 
-from archdots.settings import read_config, save_config
+from archdots.config.manager import ConfigManager
 
 PACKAGES_PATH = Path(CONFIG_FOLDER) / "packages"
 
@@ -59,7 +59,7 @@ if not selected_packages or not Confirm.ask(
 ):
     exit()
 
-settings = read_config()
+settings = ConfigManager().load()
 
 for pkg in selected_packages:
     if pkg.check(supress_output=True):
@@ -75,4 +75,6 @@ for pkg in selected_packages:
     ):
         settings["pkg"]["custom"].remove(pkg.name)
 
-save_config(settings)
+ConfigManager().save(settings)
+
+

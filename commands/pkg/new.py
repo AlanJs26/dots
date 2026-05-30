@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: create a new custom package
 ARCHDOTS
@@ -7,13 +7,16 @@ ARCHDOTS
 # this prevents the language server to throwing warnings
 args = args  # type: ignore
 
-from archdots.console import print_title
-from archdots.package import Package
-from archdots.package_manager import package_managers, are_custom_packages_valid, Custom
-from archdots.utils import default_editor
+from archdots.ui.console import print_title
+from archdots.packages.package import Package
+from archdots.packages.dependencies import are_custom_packages_valid
+from archdots.packages.managers import Custom
+from archdots.packages.managers.registry import get_package_managers
+from archdots.utils.editors import default_editor
+from archdots.utils.templates import generate_pkgbuild_template
 from rich import print
 from rich.prompt import Prompt, Confirm
-from archdots.constants import PACKAGES_FOLDER, PLATFORM
+from archdots.core.constants import PACKAGES_FOLDER, PLATFORM
 from pathlib import Path
 
 import os
@@ -50,6 +53,7 @@ while pkg_sources and Confirm.ask(
     )
 
 all_packages = Custom().get_packages()
+package_managers = get_package_managers()
 
 print_title("Dependencies")
 print(
@@ -88,52 +92,32 @@ new_pkg = Package(
 
 are_custom_packages_valid([*all_packages, new_pkg])
 
-new_pkgbuild = f'''
-description='{pkg_description.replace("'", "\\'")}'
-url='{pkg_url.replace("'", "\\'")}'
-depends=({' '.join(f"'{dep}'" for dep in pkg_dependencies)})
-source=({' '.join(f"'{source}'" for source in pkg_sources)})
-# source_on_check=false
-# make this package platform specific. Supported platforms: linux, windows 
-platform='{PLATFORM}'
-
-# All items of source will be downloaded and extracted (when necessary)
-# all downloaded (or extracted folders) are stored inside ${{sourced[@]}}
-# This script runs inside a folder over ~/.cache/archdots/pkgname, where all sources are downloaded
-#
-# $PKGPATH has the path to folder containing this file 
-
-# This function install the package on the system
-install() {{
-    echo "message from install() of {pkg_name}" 
-}}
-
-# This function uninstall the package from the system
-uninstall() {{
-    echo "message from uninstall() of {pkg_name}" 
-}}
-
-# This function should end with exit code 0 when the package is installed on system
-# and end with exit code 1 when it is uninstalled
-check() {{
-    echo "message from check() of {pkg_name}" 
-}}
-'''
+new_pkgbuild = generate_pkgbuild_template(
+    pkg_name=pkg_name,
+    pkg_description=pkg_description,
+    pkg_dependencies=pkg_dependencies,
+    platform=PLATFORM,
+    pkg_url=pkg_url,
+    pkg_sources=pkg_sources,
+    is_health_script=False,
+)
 
 os.makedirs(Path(PACKAGES_FOLDER) / pkg_name, exist_ok=True)
 with open(Path(PACKAGES_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
-    f.write(new_pkgbuild.strip())
+    f.write(new_pkgbuild + "\n")
 
 if Confirm.ask(f"Add {pkg_name} as a managed package?", default=True):  # type: ignore
-    from archdots.settings import read_config, save_config
+    from archdots.config.manager import ConfigManager
 
-    config = read_config()
+    config = ConfigManager().load()
     if "pkgs" not in config:
         config["pkgs"] = {}
     if "custom" not in config["pkgs"]:
         config["pkgs"]["custom"] = []
     config["pkgs"]["custom"].append(pkg_name)
-    save_config(config)
+    ConfigManager().save(config)
 
 if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
     default_editor(Path(PACKAGES_FOLDER) / pkg_name / "PKGBUILD")
+
+

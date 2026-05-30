@@ -1,4 +1,4 @@
-"""
+﻿"""
 ARCHDOTS
 help: check the status of all health scripts
 arguments:
@@ -7,6 +7,10 @@ arguments:
     type: str
     nargs: "*"
     help: script to check. Leave empty for all
+flags:
+  - long: --verbose
+    type: bool
+    help: show all output
 ARCHDOTS
 """
 
@@ -15,8 +19,8 @@ args = args  # type: ignore
 
 from rich import print
 
-from archdots.constants import HEALTH_FOLDER
-from archdots.package import get_packages
+from archdots.core.constants import HEALTH_FOLDER
+from archdots.packages.package import get_packages
 import os
 
 os.makedirs(HEALTH_FOLDER, exist_ok=True)
@@ -32,7 +36,9 @@ if args["name"]:
     packages = [packages_by_name[pkg_name] for pkg_name in args["name"]]
 
 for pkg in packages:
-    status = pkg.check(supress_output=True)
+    status = pkg.check(supress_output=(not args['verbose']))
     status_color = "[green]" if status else "[red]"
     status_suffix = "" if status else " (unconfigured)"
     print(f"{status_color}{pkg.name} : {pkg.description}{status_suffix}")
+
+
