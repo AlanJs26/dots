@@ -8,51 +8,6 @@ import lark
 from archdots.core.constants import PLATFORM
 from archdots.core.exceptions import PackageException, ParseException
 
-
-def parse_package_bash(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
-    pkgbuild_path = Path(pkgbuild_path)
-    pkg_name = pkgbuild_path.parent.stem
-
-    known_fields = ["depends", "description", "source", "url"]
-    optional_fields = ["platform", "source_on_check"]
-    known_funcs = ["check", "install", "uninstall"]
-    command = f"""
-    prev="$(declare -p)"
-    source {pkgbuild_path}
-    diff <(cat<<<$prev) <(declare -p) |cut -d' ' -f4-|grep -E '^({'|'.join([*known_fields, *optional_fields])})'
-    echo ===
-    declare -F|cut -d' ' -f3-|grep -E '^({'|'.join(known_funcs)})'
-    """
-
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        stdin=subprocess.PIPE,
-        shell=True,
-        text=True,
-    )
-    if not process.stdout:
-        raise PackageException(
-            "could not read PKGBUILD", pkg_name=pkg_name, pkgbuild=str(pkgbuild_path)
-        )
-
-    vars_text, func_text, *_ = process.stdout.read().split("===")
-
-    def parse_value(value) -> str | list[str]:
-        string_regex = re.compile(r'^"(.+)"$')
-        array_regex = re.compile(r'\[[0-9]\]="(.+?)"')
-        if re.match(string_regex, value):
-            return re.findall(string_regex, value)[0].strip()
-        return re.findall(array_regex, value)
-
-    fields = re.findall(r"^(\w+?)=(.+)\n", vars_text, flags=re.MULTILINE)
-    fields_dict: dict[str, Any] = {key: parse_value(value) for key, value in fields}
-    funcs = list(filter(str, func_text.splitlines()))
-
-    return fields_dict, funcs
-
-
 def parse_package_lark(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
     from archdots.package_parser import parse_from_path
 
@@ -69,10 +24,7 @@ def package_from_path(folder_path: str | Path, package_cls):
     pkg_name = folder_path.stem
     pkgbuild_path = folder_path / "PKGBUILD"
 
-    if PLATFORM == "linux":
-        fields_dict, funcs = parse_package_bash(pkgbuild_path)
-    else:
-        fields_dict, funcs = parse_package_lark(pkgbuild_path)
+    fields_dict, funcs = parse_package_lark(pkgbuild_path)
 
     funcs = [f.removesuffix('_powershell') for f in funcs]
 
