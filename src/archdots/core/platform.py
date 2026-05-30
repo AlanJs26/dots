@@ -1,18 +1,18 @@
 """Platform detection utilities."""
 
-import os
+from archdots.core.platforms.registry import get_current_platform
 
 
 def is_windows() -> bool:
-    """Check if running on Windows."""
-    return os.name == "nt"
+    """Check if running on Windows or derivative."""
+    return get_current_platform().supports("windows")
 
 
 def is_linux() -> bool:
-    """Check if running on Linux."""
-    return os.name != "nt"
+    """Check if running on Linux or derivative."""
+    return get_current_platform().supports("linux")
 
 
 def get_platform() -> str:
-    """Return 'windows' or 'linux'."""
-    return "windows" if is_windows() else "linux"
+    """Return the active platform name (e.g. 'archlinux', 'ubuntu', 'windows')."""
+    return get_current_platform().name

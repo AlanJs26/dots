@@ -131,8 +131,15 @@ def get_pending_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     custom_pm_name = Custom().name
 
     pending_packages: dict[PackageManager, list[str]] = {}
+    
+    all_custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo, ignore_platform=True)]
+    unsupported_custom = set(all_custom_pkg_names) - set(custom_pkg_names)
+    
     for pm in installed_pkgs_by_pm:
         configured_pkgs = _normalize_pm_list(config, "pkgs", pm.name)
+        
+        if pm.name == custom_pm_name:
+            configured_pkgs = [p for p in configured_pkgs if p not in unsupported_custom]
 
         obscured_packages: set[str] = set()
         if pm.name != custom_pm_name:

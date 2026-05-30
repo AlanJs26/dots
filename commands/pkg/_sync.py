@@ -67,11 +67,13 @@ if any(pkgs for pkgs in pending_packages.values()):
             if not packages:
                 continue
             print()
-            pm_by_name[pm_name].install(packages)
+            if not pm_by_name[pm_name].install(packages):
+                warn_console.print(f"Failed to install packages using {pm_name}")
+                sys.exit(1)
 
 unmanaged_packages = [
     f"{pm.name}:{pkg}"
-    for pm, pkgs in get_unmanaged_packages(use_memo=True).items()
+    for pm, pkgs in get_unmanaged_packages(use_memo=False).items()
     for pkg in pkgs
 ]
 

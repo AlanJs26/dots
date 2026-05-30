@@ -120,10 +120,10 @@ install_dots() {
     fi
 
     log_step "Installing dots via uv tool..."
-    uv tool install --python 3.14 --force "$PROJECT_DIR"
+    uv tool install --force "$PROJECT_DIR"
 
     log_step "Validating dots command..."
-    uv tool run dots --help >/dev/null
+    uv tool run --from archdots dots --help >/dev/null
 }
 
 maybe_run_init() {

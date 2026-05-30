@@ -52,15 +52,14 @@ def package_from_path(folder_path: str | Path, package_cls):
         ("custom:" + dep if ":" not in dep else dep) for dep in fields_dict["depends"]
     ]
 
-    if "platform" in fields_dict and fields_dict["platform"] not in [
-        "linux",
-        "windows",
-    ]:
-        raise PackageException(
-            f'invalid platform: {fields_dict["platform"]}',
-            pkg_name=pkg_name,
-            pkgbuild=str(pkgbuild_path),
-        )
+    if "platform" in fields_dict:
+        from archdots.core.platforms.registry import get_platform_by_name
+        if not get_platform_by_name(fields_dict["platform"]):
+            raise PackageException(
+                f'invalid platform: {fields_dict["platform"]}',
+                pkg_name=pkg_name,
+                pkgbuild=str(pkgbuild_path),
+            )
 
     if "elevated" in fields_dict and fields_dict["elevated"].lower() not in [
         "true",
@@ -93,4 +92,7 @@ def get_packages(folder: str | Path, package_from_path_fn, ignore_platform=False
     ]
     if ignore_platform:
         return packages
-    return list(filter(lambda pkg: PLATFORM == pkg.platform, packages))
+        
+    from archdots.core.platforms.registry import get_current_platform
+    current_platform = get_current_platform()
+    return list(filter(lambda pkg: current_platform.supports(pkg.platform), packages))

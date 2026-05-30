@@ -32,7 +32,7 @@ from rich.table import Table
 from rich.console import Group
 from rich.panel import Panel
 from rich import print
-from rich.prompt import Confirm
+from archdots.core.platforms.registry import get_current_platform
 
 
 class _Getch:
@@ -40,7 +40,7 @@ class _Getch:
     screen."""
 
     def __init__(self):
-        if PLATFORM == "linux":
+        if get_current_platform().supports("linux"):
             self.impl = _GetchUnix()
         else:
             self.impl = _GetchWindows()
@@ -171,7 +171,7 @@ pm_by_name: dict[str, PackageManager] = {pm.name: pm for pm in package_managers}
 config = ConfigManager().load()
 
 custom_pm_name = Custom().name
-custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=True)]
+custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=False)]
 
 unmanaged_dict = get_unmanaged_packages()
 pending_dict = get_pending_packages()

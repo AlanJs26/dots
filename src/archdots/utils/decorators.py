@@ -49,10 +49,15 @@ def memoize(f: Callable[P, T]) -> Callable[P, T]:
         if f not in _memo:
             _memo[f] = {}
 
-        if use_memo and args in _memo[f]:
-            return _memo[f][args]
+        # Create a cache key from all bound arguments (tuple of items)
+        # to ensure args and kwargs are both considered.
+        cache_key = tuple(bound_args.arguments.items())
+
+        if use_memo and cache_key in _memo[f]:
+            return _memo[f][cache_key]
         else:
-            _memo[f][args] = f(*args, **kwargs)
-            return _memo[f][args]
+            result = f(*args, **kwargs)
+            _memo[f][cache_key] = result
+            return result
 
     return wrapper

@@ -46,11 +46,18 @@ unmanaged_packages = sum(len(pkgs) for pkgs in get_unmanaged_packages().values()
 pending_packages = sum(len(pkgs) for pkgs in get_pending_packages().values())
 
 ignored_packages = 0
+
+all_custom_pkg_names = [pkg.name for pkg in Custom().get_packages(True, ignore_platform=True)]
+unsupported_custom = set(all_custom_pkg_names) - set(pkg.name for pkg in Custom().get_packages(True))
+
 for pm in package_managers:
     if pm.name == "health":
         continue
     installed = set(pm.get_installed(use_memo=True))
     configured = set(config.get("pkgs", {}).get(pm.name, []))
+    
+    if pm.name == "custom":
+        configured -= unsupported_custom
 
     obscured = set()
     if pm.name != "custom":

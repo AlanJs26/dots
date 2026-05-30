@@ -90,7 +90,7 @@ class ConfigManager(metaclass=SingletonMeta):
 
         # Merge with defaults
         with open(Path(MODULE_PATH) / "chezmoi_template/archdots/config.yaml", "r") as f:
-            default_config = yaml.safe_load(f)
+            default_config = yaml.safe_load(f) or {}
 
         self._config_memo = {**default_config, **config}
         self._last_mtime = config_path.lstat().st_mtime

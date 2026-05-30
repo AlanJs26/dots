@@ -1,7 +1,7 @@
 # here is all files/folders that are re-added when the sync command is executed
 # additional files can be installed with "archdots file add"
-chezmoi:
-  - ~/.config/archdots
+# chezmoi:
+#   - ~/.config/archdots
 
 # here is listed all packages that must be installed
 # pkgs:

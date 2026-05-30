@@ -3,11 +3,13 @@ import subprocess
 from pathlib import Path
 from shutil import which
 
-from archdots.core.constants import PLATFORM
 from archdots.ui.console import print_title, warn_console
 from archdots.core.exceptions import PackageException
+from archdots.core.platforms.registry import get_current_platform
 
-if PLATFORM == "windows":
+current_platform = get_current_platform()
+
+if current_platform.supports("windows"):
     _git_sh = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git" / "bin" / "sh.exe"
     if _git_sh.exists():
         BASH_CMD = f'"{_git_sh}"'
@@ -26,7 +28,7 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
     """Execute one function from a package PKGBUILD script."""
     sources = sources or []
     os.makedirs(package.get_cache_folder(), exist_ok=True)
-    sudo = 'sudo' if PLATFORM == 'linux' else 'gsudo'
+    sudo = 'gsudo' if get_current_platform().supports("windows") else 'sudo'
 
     from archdots.package_parser import parse_from_path
     _, parsed_functions = parse_from_path(package.pkgbuild)

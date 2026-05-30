@@ -22,7 +22,7 @@ source=({' '.join(f"'{source}'" for source in pkg_sources)})
 # source_on_check=false
 # asks user for elevated privileges
 # elevated=false
-# make this {item_type} platform specific. Supported platforms: linux, windows 
+# make this {item_type} platform specific. Examples: linux, windows, archlinux, ubuntu
 platform='{platform}'
 
 # All items of source will be downloaded and extracted (when necessary)

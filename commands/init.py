@@ -19,7 +19,7 @@ from archdots.core.exceptions import CommandException
 from archdots.packages.package import get_packages
 from archdots.ui.console import warn_console, confirm
 from archdots.packages.dependencies import split_external_dependencies
-from archdots.utils import is_url_valid
+from archdots.utils import is_git_url_valid
 from shutil import which
 
 
@@ -199,7 +199,7 @@ if CHEZMOI_AVAILABLE:
                 git_origin = ask_prompt("remote git origin", env_var="ARCHDOTS_GIT_ORIGIN")
 
                 if git_origin:
-                    if not is_url_valid(git_origin):
+                    if not is_git_url_valid(git_origin):
                         warn_console.print("The provided URL does not look valid; skipping adding remote.")
                     elif which("git") is None:
                         warn_console.print("git not found; cannot add remote")
@@ -222,14 +222,26 @@ if CHEZMOI_AVAILABLE:
         print_title(f"git remote(s) already configured: {', '.join(existing_remotes)}", color='yellow')
     else:
         git_origin = ask_prompt("remote git origin", env_var="ARCHDOTS_GIT_ORIGIN")
-        if not git_origin or not is_url_valid(git_origin):
+        if not git_origin or not is_git_url_valid(git_origin):
             raise CommandException("You must specify a valid url")
 
-        try:
-            run_cmd(["chezmoi", "init", "--apply", "--verbose", git_origin])
-        except CommandException as e:
-            raise CommandException(f"chezmoi init failed: {e}")
+        if ask_confirm("run with '--dry-run --verbose' first?", default=True):
+            try:
+                run_cmd(["chezmoi", "init", "--dry-run", "--verbose", "--apply", git_origin])
+            except CommandException as e:
+                raise CommandException(f"chezmoi init failed: {e}")
+
+        if ask_confirm("continue?", default=True):
+            warn_console.print("running 'chezmoi init --apply' this may take a while...")
+            try:
+                run_cmd(["chezmoi", "init", "--apply", git_origin])
+            except CommandException as e:
+                raise CommandException(f"chezmoi init failed: {e}")
 else:
     warn_console.print("chezmoi not found. If you have already installed it, open a new terminal or refresh the environment variables")
+
+print_title(f"Done!", color="green")
+
+print("\n[green]run 'dots sync' to synchronize all your packages, files and health scripts'")
 
 

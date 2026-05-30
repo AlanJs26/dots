@@ -13,7 +13,7 @@ platform='linux'
 
 # This function install the package on the system
 install() {
-    sh -c "$(curl -fsLS get.chezmoi.io/lb)"
+    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b $HOME/.local/bin
 }
 
 # This function uninstall the package from the system

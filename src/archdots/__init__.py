@@ -27,7 +27,6 @@ from archdots.cli.runner import (
     build_argparser,
 )
 
-
 def main():
     """
     archdots entrypoint

@@ -1,11 +1,11 @@
 ﻿"""
 ARCHDOTS
-help: sync packages and/or files
+help: sync packages, files and/or health scripts
 arguments:
   - name: type
     required: false
     type: str
-    choices: ['pkgs', 'files']
+    choices: ['pkgs', 'files', 'health']
     help: specify type of synching. Leave empty for both
 flags:
   - long: --commit
@@ -35,14 +35,17 @@ def run_archdots(*command_parts: str) -> int:
 requested_type = args["type"]
 had_error = False
 
-if not requested_type or requested_type == "pkgs":
-    had_error = run_archdots("pkg", "_sync") != 0 or had_error
-
 if not requested_type or requested_type == "files":
     file_args = ["file", "_sync"]
     if args["commit"]:
         file_args.append("--commit")
     had_error = run_archdots(*file_args) != 0 or had_error
+
+if not requested_type or requested_type == "pkgs":
+    had_error = run_archdots("pkg", "_sync") != 0 or had_error
+
+if not requested_type or requested_type == "health":
+    had_error = run_archdots("health", "sync") != 0 or had_error
 
 exit(1 if had_error else 0)
 

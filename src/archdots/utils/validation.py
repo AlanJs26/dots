@@ -1,6 +1,7 @@
 """Validation utilities."""
 
 from urllib.parse import urlparse
+import re
 
 
 def is_url_valid(url: str) -> bool:
@@ -17,3 +18,7 @@ def is_url_valid(url: str) -> bool:
         return all([result.scheme, result.netloc])
     except AttributeError:
         return False
+
+def is_git_url_valid(url: str) -> bool:
+    return bool(re.search(r"git@\w+\.\w+:\w+\/[\w-]+\.git", url))
+    
