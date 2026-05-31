@@ -26,20 +26,32 @@ def iter_imports(imports_any: Any, recursive: bool = False) -> Generator[Path, N
     """
     custom_folder = Path(CONFIG_FOLDER)
 
+    from archdots.core.platforms.registry import get_current_platform
+    current_platform = get_current_platform()
+
     if isinstance(imports_any, str):
-        imports: list[str] = [imports_any]
+        raw_imports: list[Any] = [imports_any]
     elif isinstance(imports_any, list):
-        if not all(isinstance(x, str) for x in imports_any):
-            raise SettingsException(
-                "Invalid import. Expecting a list of paths and found an object instead"
-            )
-        imports: list[str] = imports_any
+        raw_imports = imports_any
     else:
         raise SettingsException(
             "Invalid import. Expecting a path and found an object instead"
         )
 
-    for imp in imports:
+    for item in raw_imports:
+        if isinstance(item, str):
+            imp = item
+        elif isinstance(item, dict):
+            if len(item) != 1:
+                raise SettingsException(f"Invalid import specification: {item}")
+            imp, platform_req = list(item.items())[0]
+            if not current_platform.supports(platform_req):
+                continue
+        else:
+            raise SettingsException(
+                f"Invalid import. Expecting a path (str) or a platform-specific path (dict), found {type(item).__name__}"
+            )
+
         if imp.startswith("."):
             import_path = (custom_folder / imp).resolve()
         else:
@@ -48,14 +60,14 @@ def iter_imports(imports_any: Any, recursive: bool = False) -> Generator[Path, N
         if not os.path.isfile(import_path):
             raise SettingsException(f'Invalid import. "{import_path}" is not a file')
 
+        yield import_path
+
         if recursive:
             with open(import_path, "r") as f:
                 # Use PyYAML for fast check
                 imported_config = yaml.safe_load(f)
                 if isinstance(imported_config, dict) and "import" in imported_config:
-                    yield from (Path(p) for p in imported_config["import"])
-
-        yield import_path
+                    yield from iter_imports(imported_config["import"], recursive=True)
 
 
 def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
@@ -72,31 +84,17 @@ def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
         SettingsException: If config file is invalid
     """
     config_path = Path(CONFIG_FOLDER) / "config.yaml"
+    
+    # Check main config file
+    if config_path.exists() and config_path.lstat().st_mtime > mtime:
+        return True
+
     if "import" not in config:
-        if config_path.lstat().st_mtime > mtime:
-            return True
         return False
 
-    pending = [*iter_imports(config["import"]), config_path]
-
-    while pending:
-        next_import = pending.pop()
-
-        if next_import.lstat().st_mtime > mtime:
+    for imp_path in iter_imports(config["import"], recursive=True):
+        if imp_path.lstat().st_mtime > mtime:
             return True
-
-        if not next_import.is_file():
-            raise SettingsException("invalid config file")
-        
-        with open(next_import, "r") as f:
-            # Use PyYAML for fast check
-            next_config = yaml.safe_load(f)
-
-        if isinstance(next_config, dict) and "import" in next_config:
-            if isinstance(next_config["import"], str):
-                pending.append(Path(CONFIG_FOLDER) / next_config["import"])
-            else:
-                pending.extend((Path(CONFIG_FOLDER) / p) for p in next_config["import"])
 
     return False
 

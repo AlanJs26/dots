@@ -17,11 +17,22 @@ from archdots.utils.templates import generate_pkgbuild_template
 from rich import print
 from rich.prompt import Prompt, Confirm
 from archdots.core.constants import HEALTH_FOLDER, PLATFORM
+from archdots.core.platforms.registry import get_all_platforms
 from pathlib import Path
 
 import os
 
-os.makedirs(HEALTH_FOLDER, exist_ok=True)
+valid_platforms = [p.name for p in get_all_platforms()]
+if any(
+    Path(HEALTH_FOLDER).joinpath(d).is_dir()
+    for d in valid_platforms
+    if Path(HEALTH_FOLDER).exists()
+):
+    effective_health_folder = Path(HEALTH_FOLDER) / PLATFORM
+else:
+    effective_health_folder = Path(HEALTH_FOLDER)
+
+os.makedirs(effective_health_folder, exist_ok=True)
 
 print_title(
     "fill in all health script informations. Fields suffixed with [red](*)[/] are mandatory"
@@ -72,7 +83,7 @@ new_pkg = Package(
     pkg_url,
     pkg_dependencies,
     pkg_sources,
-    str(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD"),
+    str(effective_health_folder / pkg_name / "PKGBUILD"),
     ["check", "install", "uninstall"],
 )
 
@@ -86,11 +97,11 @@ new_pkgbuild = generate_pkgbuild_template(
     is_health_script=True,
 )
 
-os.makedirs(Path(HEALTH_FOLDER) / pkg_name, exist_ok=True)
-with open(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD", "w") as f:
+os.makedirs(effective_health_folder / pkg_name, exist_ok=True)
+with open(effective_health_folder / pkg_name / "PKGBUILD", "w") as f:
     f.write(new_pkgbuild + "\n")
 
 if Confirm.ask("Open PKGBUILD on default EDITOR?", default=True):  # type: ignore
-    default_editor(Path(HEALTH_FOLDER) / pkg_name / "PKGBUILD")
+    default_editor(effective_health_folder / pkg_name / "PKGBUILD")
 
 

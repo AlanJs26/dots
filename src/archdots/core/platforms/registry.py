@@ -12,9 +12,20 @@ def get_all_platforms() -> list[Platform]:
         from archdots.core.platforms.ubuntu import Ubuntu
         from archdots.core.platforms.debian import Debian
         from archdots.core.platforms.fedora import Fedora
+        from archdots.core.platforms.hyprland import Hyprland
+        from archdots.core.platforms.bspwm import Bspwm
 
         # Check most specific first to avoid matching generic Linux/Windows early
-        _platforms = [ArchLinux(), Ubuntu(), Debian(), Fedora(), Linux(), Windows()]
+        _platforms = [
+            Hyprland(),
+            Bspwm(),
+            ArchLinux(),
+            Ubuntu(),
+            Debian(),
+            Fedora(),
+            Linux(),
+            Windows(),
+        ]
     return _platforms
 
 def get_platform_by_name(name: str) -> Platform | None:
