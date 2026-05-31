@@ -59,9 +59,17 @@ commands = {
 }
 
 
-def run_and_wait(command: list[str]) -> int:
+def run_and_wait(command: list[str], progress_console=None) -> int:
     try:
-        result = run_command(command)
+        # Capture output during progress to avoid terminal corruption
+        result = run_command(command, capture_output=True, text=True)
+        if result.returncode != 0 and result.stderr:
+            msg = result.stderr.strip()
+            if progress_console:
+                progress_console.print(f"[red]error:[/] {msg}")
+            else:
+                from archdots.ui.console import err_console
+                err_console.print(msg)
         return result.returncode
     except KeyboardInterrupt:
         from rich import print
@@ -74,63 +82,60 @@ config = ConfigManager().load()
 had_error = False
 
 
-with Progress() as progress:
+with Progress(transient=True) as progress:
     task = progress.add_task("Re-adding chezmoi files", total=None)
-    had_error = run_and_wait(commands["re-add"]) != 0 or had_error
-    progress.update(task, completed=1, total=1)
+    had_error = run_and_wait(commands["re-add"], progress.console) != 0 or had_error
+    progress.update(task, completed=1, total=1, visible=False)
 
     failures: list[str] = []
     failures_lock = threading.Lock()
 
-    def chezmoi_forget_thread(task: TaskID, file: str):
-        progress.update(task, advance=1, description=f"forgetting {file}")
+    def chezmoi_forget_thread(task_id: TaskID, file: str):
+        progress.update(task_id, advance=1, description=f"forgetting {file}")
         returncode = run_and_wait(
-            ["chezmoi", "forget", "--force", os.path.expanduser(file)]
+            ["chezmoi", "forget", "--force", os.path.expanduser(file)],
+            progress.console
         )
-        if returncode != 0:
-            with failures_lock:
-                failures.append(file)
-
-    def chezmoi_add_thread(task: TaskID, file: str):
-        progress.update(task, advance=1, description=f"adding {file}")
-        returncode = run_and_wait(["chezmoi", "add", "--force", os.path.expanduser(file)])
         if returncode != 0:
             with failures_lock:
                 failures.append(file)
 
     if "chezmoi" in config and isinstance(config["chezmoi"], list):
-        task = progress.add_task(
+        task_forget = progress.add_task(
             "forgettting configured chezmoi files", total=len(config["chezmoi"])
         )
         with ThreadPoolExecutor(max_workers=4) as pool:
             for file in config["chezmoi"]:
-                pool.submit(chezmoi_forget_thread, task, file)
+                pool.submit(chezmoi_forget_thread, task_forget, file)
+        
+        progress.update(task_forget, visible=False)
 
-        task = progress.add_task(
+        task_add = progress.add_task(
             "adding configured chezmoi files", total=len(config["chezmoi"]) + 1
         )
-        # with ThreadPoolExecutor(max_workers=4) as pool:
         for file in config["chezmoi"]:
-            progress.update(task, advance=1, description=f"adding {file}")
+            progress.update(task_add, advance=1, description=f"adding {file}")
             returncode = run_and_wait(
-                ["chezmoi", "add", "--force", os.path.expanduser(file)]
+                ["chezmoi", "add", "--force", os.path.expanduser(file)],
+                progress.console
             )
             if returncode != 0:
                 failures.append(file)
-            # pool.submit(chezmoi_add_thread, task, file)
+        
+        progress.update(task_add, visible=False)
 
     if failures:
         had_error = True
 
-    task = progress.add_task("adding git files", total=None)
-    had_error = run_and_wait(commands["git add"]) != 0 or had_error
-    progress.update(task, completed=1, total=1)
+    task_git = progress.add_task("adding git files", total=None)
+    had_error = run_and_wait(commands["git add"], progress.console) != 0 or had_error
+    progress.update(task_git, completed=1, total=1, visible=False)
 
     # task = progress.add_task("running 'chezmoi update'", total=None)
     # had_error = run_and_wait(commands["chezmoi update"]) != 0 or had_error
     # progress.update(task, completed=1, total=1)
 
-run_command(["chezmoi", "git", "--", "diff", "--cached", "--stat"])
+# run_command(["chezmoi", "git", "--", "diff", "--cached", "--stat"])
 
 result = run_command(
     ["chezmoi", "git", "--", "diff", "--numstat", "--staged"],

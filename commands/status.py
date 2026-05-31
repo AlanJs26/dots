@@ -41,31 +41,35 @@ def run(text: str):
     return stdout
 
 
-# Use cache for these computations
-managed_pkgs_dict = get_managed_packages(use_memo=True)
-unmanaged_pkgs_dict = get_unmanaged_packages(use_memo=True)
-pending_pkgs_dict = get_pending_packages(use_memo=True)
+# Fetch all data in parallel batches to avoid redundant discovery and duplicate bars
+package_managers_to_check = [pm for pm in package_managers if pm.name != "health"]
+# 1. Fetch raw data (for accurate pending checks) and filtered data (for counting) in parallel
+from archdots.packages.status import bulk_get_installed
+installed_raw_data = bulk_get_installed(package_managers_to_check, use_memo=True, by_user=False)
+installed_filtered_data = bulk_get_installed(package_managers_to_check, use_memo=True, by_user=True)
 
-managed_packages = sum(len(pkgs) for pkgs in managed_pkgs_dict.values())
-unmanaged_packages = sum(len(pkgs) for pkgs in unmanaged_pkgs_dict.values())
-pending_packages = sum(len(pkgs) for pkgs in pending_pkgs_dict.values())
-
-ignored_packages = 0
-
+# 2. Get custom packages once
 custom_manager = Custom()
 custom_packages_all = custom_manager.get_packages(use_memo=True, ignore_platform=True)
 custom_packages_supported = custom_manager.get_packages(use_memo=True)
 
-all_custom_pkg_names = [pkg.name for pkg in custom_packages_all]
-unsupported_custom = set(all_custom_pkg_names) - set(pkg.name for pkg in custom_packages_supported)
-
+custom_pkg_names_all = [pkg.name for pkg in custom_packages_all]
 custom_pkg_names_supported = [pkg.name for pkg in custom_packages_supported]
+unsupported_custom = set(custom_pkg_names_all) - set(custom_pkg_names_supported)
 
-for pm in package_managers:
-    if pm.name == "health":
-        continue
-    installed = set(pm.get_installed(use_memo=True))
-    configured = set(config.get("pkgs", {}).get(pm.name, []))
+managed_packages = 0
+unmanaged_packages = 0
+pending_packages = 0
+ignored_packages = 0
+
+from archdots.packages.filters import _normalize_pm_list
+
+for pm in package_managers_to_check:
+    installed_raw = installed_raw_data.get(pm.name, [])
+    installed_filtered = installed_filtered_data.get(pm.name, [])
+    
+    configured_list = _normalize_pm_list(config, "pkgs", pm.name)
+    configured = set(configured_list)
     
     if pm.name == "custom":
         configured -= unsupported_custom
@@ -74,17 +78,41 @@ for pm in package_managers:
     if pm.name != "custom":
         obscured = set(custom_pkg_names_supported).intersection(configured)
 
-    pending = configured - installed - obscured
-
-    for pkg in installed.union(pending):
-        if is_package_ignored(config, pm.name, pkg):
+    # Calculate Pending
+    pending_list = [p for p in configured if not pm.is_installed_in_data(p, installed_raw) and p not in obscured]
+    
+    # Managed / Unmanaged (using filtered list to avoid version duplicates)
+    for p in installed_filtered:
+        if is_package_ignored(config, pm.name, p):
             ignored_packages += 1
+            continue
+        if pm.is_managed(p, configured_list):
+            managed_packages += 1
+        else:
+            unmanaged_packages += 1
+            
+    for p in pending_list:
+        if is_package_ignored(config, pm.name, p):
+            ignored_packages += 1
+        else:
+            pending_packages += 1
+
+# Lost candidates: supported custom packages that are neither installed nor in config
+custom_installed = set(installed_raw_data.get("custom", []))
+custom_configured = set(_normalize_pm_list(config, "pkgs", "custom"))
 
 lost_candidates = (
     set(custom_pkg_names_supported)
-    .difference(custom_manager.get_installed(use_memo=True))
-    .difference(config.get("pkgs", {}).get("custom", []))
+    .difference(custom_installed)
+    .difference(custom_configured)
 )
+
+lost_packages = 0
+for pkg in lost_candidates:
+    if is_package_ignored(config, "custom", pkg):
+        ignored_packages += 1
+    else:
+        lost_packages += 1
 
 lost_packages = 0
 for pkg in lost_candidates:
