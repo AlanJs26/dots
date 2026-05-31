@@ -1,6 +1,7 @@
 """Package manager registry and utilities (__init__)."""
 
 from archdots.packages.managers.apt import Apt
+from archdots.packages.managers.deb import Deb
 from archdots.packages.managers.base import PackageManager
 from archdots.packages.managers.custom import Custom
 from archdots.packages.managers.health import Health
@@ -17,6 +18,7 @@ from archdots.packages.managers.registry import (
 __all__ = [
     "PackageManager",
     "Apt",
+    "Deb",
     "Custom",
     "Health",
     "Pacman",

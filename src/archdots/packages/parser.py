@@ -26,6 +26,24 @@ def package_from_path(folder_path: str | Path, package_cls):
 
     fields_dict, funcs = parse_package_lark(pkgbuild_path)
 
+    # Merge platform-specific dependencies
+    from archdots.core.platforms.registry import get_current_platform
+    current_platform = get_current_platform()
+    
+    for key in list(fields_dict.keys()):
+        if key.endswith("_depends"):
+            plat_name = key.removesuffix("_depends")
+            if current_platform.supports(plat_name):
+                if "depends" not in fields_dict:
+                    fields_dict["depends"] = []
+                # Ensure it's a list (array in PKGBUILD)
+                val = fields_dict[key]
+                if isinstance(val, list):
+                    fields_dict["depends"].extend(val)
+                else:
+                    fields_dict["depends"].append(str(val))
+            del fields_dict[key]
+
     funcs = [f.removesuffix('_powershell') for f in funcs]
 
     known_fields = ["depends", "description", "source", "url"]
@@ -61,7 +79,7 @@ def package_from_path(folder_path: str | Path, package_cls):
                 pkgbuild=str(pkgbuild_path),
             )
 
-    if "elevated" in fields_dict and fields_dict["elevated"].lower() not in [
+    if "elevated" in fields_dict and str(fields_dict["elevated"]).lower() not in [
         "true",
         "false",
     ]:
@@ -71,11 +89,15 @@ def package_from_path(folder_path: str | Path, package_cls):
             pkgbuild=str(pkgbuild_path),
         )
 
+    # Filter fields_dict to only include fields known by the Package dataclass
+    allowed_fields = ["description", "url", "depends", "source", "platform", "source_on_check", "elevated"]
+    filtered_fields = {k: v for k, v in fields_dict.items() if k in allowed_fields}
+
     return package_cls(
         name=pkg_name,
         pkgbuild=str(pkgbuild_path),
         available_functions=funcs,
-        **fields_dict,
+        **filtered_fields,
     )
 
 

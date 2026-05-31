@@ -14,9 +14,16 @@ def split_packages_by_pm(packages: list[str]) -> dict[PackageManager, list[str]]
     normalized = [name if ":" in name else f"custom:{name}" for name in packages]
 
     package_managers = get_package_managers()
-    for package_manager, pkgs in groupby(normalized, lambda name: name.split(":")[0]):
-        pm = next(filter(lambda p: p.name == package_manager, package_managers))
-        pkgs_by_pm[pm] = [pkg.split(":")[1] for pkg in pkgs]
+    for name in normalized:
+        parts = name.split(":", 1)
+        if len(parts) != 2:
+            continue
+        package_manager_name, pkg_name = parts
+        pm = next((p for p in package_managers if p.name == package_manager_name), None)
+        if pm:
+            if pm not in pkgs_by_pm:
+                pkgs_by_pm[pm] = []
+            pkgs_by_pm[pm].append(pkg_name)
 
     return pkgs_by_pm
 
@@ -92,9 +99,10 @@ def _get_external_dependencies(packages: list[Package]) -> list[str]:
                     missing package_manager especifier. i.e. "package_manager:{dep}"
                     valid package_managers: {', '.join('"' + n + '"' for n in pm_names)}'''
                 )
-            if dep.split(":")[0] not in pm_names:
+            pm_name = dep.split(":", 1)[0]
+            if pm_name not in pm_names:
                 raise PackageException(
-                    f'''invalid package manager of "{dep}": "{dep.split(':')[0]}"
+                    f'''invalid package manager of "{dep}": "{pm_name}"
                     valid package_managers: {', '.join('"' + n + '"' for n in pm_names)}'''
                 )
             dependencies.append(dep)

@@ -29,12 +29,25 @@ class Apt(PackageManager):
         # Fetch explicitly installed
         user_pkgs = self._run_apt("apt-mark showmanual")
         
-        custom_package_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo)]
+        ignored = self.get_ignored_packages(use_memo=use_memo)
         
         return {
-            "all": [p for p in all_pkgs if p not in custom_package_names],
-            "user": [p for p in user_pkgs if p not in custom_package_names]
+            "all": [p for p in all_pkgs if p not in ignored],
+            "user": [p for p in user_pkgs if p not in ignored]
         }
+
+    def get_ignored_packages(self, use_memo: bool = False) -> set[str]:
+        # 1. Ignore Custom packages (PKGBUILDs)
+        custom_names = {pkg.name for pkg in Custom().get_packages(use_memo=use_memo)}
+        
+        # 2. Ignore Deb packages defined in config
+        from archdots.config.manager import ConfigManager
+        config = ConfigManager().load(use_cache=use_memo)
+        pm_pkgs = config.get("pkgs", {})
+        deb_pkgs = pm_pkgs.get("deb", [])
+        deb_names = {p.split("@", 1)[0] for p in deb_pkgs if isinstance(p, str)}
+        
+        return custom_names | deb_names
 
     def _run_apt(self, command: str) -> list[str]:
         process = subprocess.Popen(

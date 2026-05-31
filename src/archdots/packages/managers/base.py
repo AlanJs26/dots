@@ -102,3 +102,10 @@ class PackageManager(ABC, metaclass=SingletonMeta):
             True if managed, False otherwise
         """
         return installed_pkg in configured_pkgs
+
+    def get_ignored_packages(self, use_memo: bool = False) -> set[str]:
+        """Get set of package names that this manager should ignore.
+        
+        Used to resolve priority conflicts between managers (e.g. Apt ignoring Deb packages).
+        """
+        return set()

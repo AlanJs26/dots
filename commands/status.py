@@ -68,18 +68,16 @@ for pm in package_managers_to_check:
     installed_raw = installed_raw_data.get(pm.name, [])
     installed_filtered = installed_filtered_data.get(pm.name, [])
     
+    ignored_by_pm = pm.get_ignored_packages(use_memo=True)
+
     configured_list = _normalize_pm_list(config, "pkgs", pm.name)
     configured = set(configured_list)
     
     if pm.name == "custom":
         configured -= unsupported_custom
 
-    obscured = set()
-    if pm.name != "custom":
-        obscured = set(custom_pkg_names_supported).intersection(configured)
-
     # Calculate Pending
-    pending_list = [p for p in configured if not pm.is_installed_in_data(p, installed_raw) and p not in obscured]
+    pending_list = [p for p in configured if not pm.is_installed_in_data(p, installed_raw) and p not in ignored_by_pm]
     
     # Managed / Unmanaged (using filtered list to avoid version duplicates)
     for p in installed_filtered:
@@ -88,7 +86,7 @@ for pm in package_managers_to_check:
             continue
         if pm.is_managed(p, configured_list):
             managed_packages += 1
-        else:
+        elif pm.name != "deb": # NEVER count unmanaged for deb
             unmanaged_packages += 1
             
     for p in pending_list:
@@ -106,13 +104,6 @@ lost_candidates = (
     .difference(custom_installed)
     .difference(custom_configured)
 )
-
-lost_packages = 0
-for pkg in lost_candidates:
-    if is_package_ignored(config, "custom", pkg):
-        ignored_packages += 1
-    else:
-        lost_packages += 1
 
 lost_packages = 0
 for pkg in lost_candidates:

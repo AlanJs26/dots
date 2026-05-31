@@ -15,6 +15,7 @@ def get_package_managers() -> list[PackageManager]:
 
     if not _package_managers:
         from archdots.packages.managers.apt import Apt
+        from archdots.packages.managers.deb import Deb
         from archdots.packages.managers.custom import Custom
         from archdots.packages.managers.health import Health
         from archdots.packages.managers.pacman import Pacman
@@ -24,7 +25,7 @@ def get_package_managers() -> list[PackageManager]:
         from archdots.packages.managers.uv import Uv
 
         _package_managers = [
-            pm for pm in [Pacman(), Apt(), Npm(), Uv(), Custom(), Health(), Winget(), Scoop()] if pm.is_available()
+            pm for pm in [Pacman(), Apt(), Deb(), Npm(), Uv(), Custom(), Health(), Winget(), Scoop()] if pm.is_available()
         ]
 
     return _package_managers
