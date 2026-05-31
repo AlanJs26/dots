@@ -2,6 +2,7 @@
 
 import inspect
 import functools
+import threading
 from abc import ABCMeta
 from collections.abc import Callable
 from typing import TypeVar, ParamSpec
@@ -10,6 +11,7 @@ T = TypeVar("T")  # function return value
 P = ParamSpec("P")  # function parameters
 
 _memo = {}
+_memo_lock = threading.Lock()
 
 
 class SingletonMeta(ABCMeta):
@@ -28,6 +30,7 @@ def memoize(f: Callable[P, T]) -> Callable[P, T]:
 
     The decorated function MUST have a 'use_memo' boolean parameter (default or explicit).
     If use_memo=True, result is cached; if use_memo=False, function runs fresh each time.
+    Thread-safe implementation.
     """
 
     @functools.wraps(f)
@@ -46,18 +49,24 @@ def memoize(f: Callable[P, T]) -> Callable[P, T]:
                 "memoize expects the 'use_memo' argument to be a boolean"
             )
 
-        if f not in _memo:
-            _memo[f] = {}
-
         # Create a cache key from all bound arguments (tuple of items)
         # to ensure args and kwargs are both considered.
         cache_key = tuple(bound_args.arguments.items())
 
-        if use_memo and cache_key in _memo[f]:
-            return _memo[f][cache_key]
-        else:
-            result = f(*args, **kwargs)
+        with _memo_lock:
+            if f not in _memo:
+                _memo[f] = {}
+
+            if use_memo and cache_key in _memo[f]:
+                return _memo[f][cache_key]
+
+        # Call the function outside the lock to allow other functions to be memoized
+        # and to prevent deadlocks if the function itself calls something memoized.
+        result = f(*args, **kwargs)
+
+        with _memo_lock:
             _memo[f][cache_key] = result
-            return result
+
+        return result
 
     return wrapper

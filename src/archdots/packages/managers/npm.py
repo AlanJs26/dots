@@ -14,9 +14,18 @@ class Npm(PackageManager):
     def __init__(self) -> None:
         super().__init__("npm")
 
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+        pkg_names = self._get_all_installed(use_memo)
+
+        # Usually npm and corepack are installed globally by default, we can exclude them if by_user is True
+        if by_user:
+            pkg_names = [p for p in pkg_names if p not in ["npm", "corepack"]]
+
+        return pkg_names
+
     @progress_decorator("npm packages")
     @memoize
-    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+    def _get_all_installed(self, use_memo: bool = False) -> list[str]:
         command = "npm list -g --depth=0 --json"
         process = subprocess.Popen(
             command,
@@ -37,12 +46,6 @@ class Npm(PackageManager):
 
         dependencies = data.get("dependencies", {})
         pkg_names = list(dependencies.keys())
-
-        # Usually npm and corepack are installed globally by default, we can exclude them if by_user is True
-        if by_user:
-            for default_pkg in ["npm", "corepack"]:
-                if default_pkg in pkg_names:
-                    pkg_names.remove(default_pkg)
 
         custom_package_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo)]
         return list(filter(lambda p: p not in custom_package_names, pkg_names))

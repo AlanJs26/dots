@@ -79,6 +79,18 @@ class PackageManager(ABC, metaclass=SingletonMeta):
         """
         return package in self.get_installed(use_memo, by_user=False)
 
+    def is_installed_in_data(self, package: str, installed_data: list[str]) -> bool:
+        """Check if a package is in the provided installed data list.
+        
+        Args:
+            package: Package name to check
+            installed_data: List of installed package names (should be from by_user=False)
+            
+        Returns:
+            True if in data, False otherwise
+        """
+        return package in installed_data
+
     def is_managed(self, installed_pkg: str, configured_pkgs: list[str]) -> bool:
         """Check if an installed package is considered managed by the configuration.
         

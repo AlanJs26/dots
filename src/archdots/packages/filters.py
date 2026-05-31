@@ -9,6 +9,7 @@ from archdots.packages.managers import Custom, Health
 from archdots.packages.managers.registry import get_package_managers
 from archdots.config.manager import ConfigManager
 from archdots.ui.console import warn_console
+from archdots.packages.status import bulk_get_installed
 
 
 _WARNED_CONFLICTS: set[tuple[str, str, str]] = set()
@@ -86,15 +87,16 @@ def get_unmanaged_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     config = ConfigManager().load(use_cache=use_memo)
     warn_pkg_ignored_conflicts(config)
 
-    package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo, by_user=True) for pm in package_managers if pm.name not in _IGNORED_PMS}
+    package_managers = [pm for pm in get_package_managers() if pm.name not in _IGNORED_PMS]
+    installed_data = bulk_get_installed(package_managers, use_memo, by_user=True)
 
     unmanaged_packages: dict[PackageManager, list[str]] = {}
-    for pm in installed_pkgs_by_pm:
+    for pm in package_managers:
+        installed_pkgs = installed_data.get(pm.name, [])
         configured_pkgs = _normalize_pm_list(config, "pkgs", pm.name)
         unmanaged_list = [
             pkg_name
-            for pkg_name in installed_pkgs_by_pm[pm]
+            for pkg_name in installed_pkgs
             if not pm.is_managed(pkg_name, configured_pkgs)
             and not is_package_ignored(config, pm.name, pkg_name)
         ]
@@ -107,15 +109,16 @@ def get_managed_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     config = ConfigManager().load(use_cache=use_memo)
     warn_pkg_ignored_conflicts(config)
 
-    package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo, by_user=True) for pm in package_managers if pm.name not in _IGNORED_PMS}
+    package_managers = [pm for pm in get_package_managers() if pm.name not in _IGNORED_PMS]
+    installed_data = bulk_get_installed(package_managers, use_memo, by_user=True)
 
     managed_packages: dict[PackageManager, list[str]] = {}
-    for pm in installed_pkgs_by_pm:
+    for pm in package_managers:
+        installed_pkgs = installed_data.get(pm.name, [])
         configured_pkgs = _normalize_pm_list(config, "pkgs", pm.name)
         managed_list = [
             pkg_name
-            for pkg_name in installed_pkgs_by_pm[pm]
+            for pkg_name in installed_pkgs
             if pm.is_managed(pkg_name, configured_pkgs)
             and not is_package_ignored(config, pm.name, pkg_name)
         ]
@@ -127,8 +130,10 @@ def get_pending_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     config = ConfigManager().load(use_cache=use_memo)
     warn_pkg_ignored_conflicts(config)
 
-    package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers if pm.name not in _IGNORED_PMS}
+    package_managers = [pm for pm in get_package_managers() if pm.name not in _IGNORED_PMS]
+    # For pending, we need raw data (by_user=False) to correctly detect installed aliases
+    installed_data_raw = bulk_get_installed(package_managers, use_memo, by_user=False)
+    
     custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo)]
     custom_pm_name = Custom().name
 
@@ -137,7 +142,8 @@ def get_pending_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     all_custom_pkg_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo, ignore_platform=True)]
     unsupported_custom = set(all_custom_pkg_names) - set(custom_pkg_names)
     
-    for pm in installed_pkgs_by_pm:
+    for pm in package_managers:
+        installed_pkgs_raw = installed_data_raw.get(pm.name, [])
         configured_pkgs = _normalize_pm_list(config, "pkgs", pm.name)
         
         if pm.name == custom_pm_name:
@@ -150,7 +156,7 @@ def get_pending_packages(use_memo=True) -> dict[PackageManager, list[str]]:
         pkgs = [
             pkg_name
             for pkg_name in configured_pkgs
-            if not pm.is_installed(pkg_name, use_memo)
+            if not pm.is_installed_in_data(pkg_name, installed_pkgs_raw)
             and pkg_name not in obscured_packages
             and not is_package_ignored(config, pm.name, pkg_name)
         ]

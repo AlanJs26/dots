@@ -4,35 +4,50 @@ from collections.abc import Callable, Mapping, MutableMapping, MutableSequence
 from typing import Any
 
 
+def merge_unique(base: dict[Any, Any], nxt: dict[Any, Any]) -> dict[Any, Any]:
+    """Merge nxt into base, ensuring no duplicate items in lists."""
+    for k, v in nxt.items():
+        if k in base:
+            if isinstance(base[k], dict) and isinstance(v, dict):
+                merge_unique(base[k], v)
+            elif isinstance(base[k], list) and isinstance(v, list):
+                # For lists, we append only new items. 
+                # For dicts in lists, we check for equality.
+                for item in v:
+                    if item not in base[k]:
+                        base[k].append(item)
+            else:
+                base[k] = v
+        else:
+            base[k] = v
+    return base
+
+
 def iterdict_merge(
     d: dict[Any, Any], callback: Callable[[Any, Any], Any]
 ) -> dict[Any, Any]:
-    """Recursively merge dictionary with callback results.
-
-    Traverses a dict, calling callback for each key/value. If callback returns
-    a value, that value is merged into the result dict at that key.
-
-    Args:
-        d: Dictionary to process
-        callback: Function taking (key, value) and returning dict or None
-
-    Returns:
-        Merged dictionary
-    """
-    from deepmerge import always_merger
-
-    # We use a copy to avoid mutating the original during traversal
-    # but we must be careful with CommentedMap if we want to preserve it.
-    # However, iterdict_merge is mostly used for loading, where we merge
-    # imports into a final result.
-    d_copy = d.copy()
+    """Recursively merge dictionary with callback results, avoiding duplicates."""
+    res = {}
+    
+    # 1. Process regular keys first
     for k, v in d.items():
+        if k == "import":
+            continue
         if isinstance(v, dict):
-            d_copy[k] = iterdict_merge(v, callback)
-        elif (result := callback(k, v)) is not None:
-            always_merger.merge(d_copy, iterdict_merge(result, callback))
-            del d_copy[k]
-    return d_copy
+            res[k] = iterdict_merge(v, callback)
+        else:
+            res[k] = v
+            
+    # 2. Process imports and merge them into the result
+    if "import" in d:
+        imported_data = callback("import", d["import"])
+        if imported_data:
+            # Recurse into imported data to handle nested imports
+            processed_imported = iterdict_merge(imported_data, callback)
+            # Merge into res ensuring uniqueness
+            merge_unique(res, processed_imported)
+            
+    return res
 
 
 def freeze(d: Any) -> frozenset:
@@ -97,17 +112,12 @@ def update_in_place(target: Any, source: Any) -> None:
             else:
                 target[key] = value
         
-        # Remove keys not in source (if target is meant to be a full sync)
-        # Note: In our config system, we usually only sync keys that are present.
-        # However, for full sync, we might need to delete.
+        # Remove keys not in source
         for key in list(target.keys()):
             if key not in source:
                 del target[key]
                 
     elif isinstance(target, MutableSequence) and isinstance(source, list):
-        # For sequences, a full replacement is often safer for comments 
-        # unless we want to try element matching.
-        # But ruamel sequences also have comments.
         target[:] = source
 
 
@@ -117,23 +127,7 @@ def iterdict_imports(
     new_merged_config: dict[Any, Any],
     config_path,
 ) -> dict[Any, Any]:
-    """Traverse config imports and write changes to correct files.
-
-    Distributes changes from new_merged_config back into the original
-    config files (considering imports and file modification times).
-
-    Args:
-        config: Current config dict
-        merged_config: Previously merged config (for diff)
-        new_merged_config: New config values to apply
-        config_path: Path to main config file
-
-    Returns:
-        Updated config dict
-
-    Raises:
-        SettingsException: If config structure is invalid
-    """
+    """Traverse config imports and write changes to correct files."""
     from pathlib import Path
     from itertools import chain
     from archdots.core.exceptions import SettingsException
@@ -182,11 +176,19 @@ def iterdict_imports(
                 new_v = new_merged_config[k]
                 
                 if isinstance(v, (dict, list)) and isinstance(new_v, (dict, list)):
-                    # For complex structures, we check if they were in the previous merged state
                     if k in merged_config:
-                        # Recursively update
                         if isinstance(v, dict) and isinstance(new_v, dict):
                             update_in_place(v, new_v)
+                        elif isinstance(v, list) and isinstance(new_v, list):
+                            new_merged_items = freeze(new_v)
+                            keeped_items = frozenset(freeze(v)).intersection(new_merged_items)
+                            
+                            # Only add TRULY new items to the main config
+                            if current_config_path == config_path:
+                                new_items = new_merged_items.difference(freeze(merged_config[k]))
+                                current_config[k] = [*unfreeze(keeped_items), *unfreeze(new_items)]
+                            else:
+                                current_config[k] = [*unfreeze(keeped_items)]
                         else:
                             current_config[k] = new_v
                     else:
@@ -201,4 +203,3 @@ def iterdict_imports(
             yaml_rt.dump(current_config, f)
 
     return updated_main_config
-

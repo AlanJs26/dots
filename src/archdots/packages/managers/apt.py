@@ -13,10 +13,30 @@ class Apt(PackageManager):
     def __init__(self) -> None:
         super().__init__("apt")
 
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+        return self._get_installed_cached(use_memo, by_user)
+
+    @memoize
+    def _get_installed_cached(self, use_memo: bool, by_user: bool) -> list[str]:
+        data = self._get_full_system_data(use_memo)
+        return data["user"] if by_user else data["all"]
+
     @progress_decorator("apt packages")
     @memoize
-    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
-        command = "apt-mark showmanual" if by_user else "dpkg-query -f '${binary:Package}\n' -W"
+    def _get_full_system_data(self, use_memo: bool) -> dict[str, list[str]]:
+        # Fetch all
+        all_pkgs = self._run_apt("dpkg-query -f '${binary:Package}\n' -W")
+        # Fetch explicitly installed
+        user_pkgs = self._run_apt("apt-mark showmanual")
+        
+        custom_package_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo)]
+        
+        return {
+            "all": [p for p in all_pkgs if p not in custom_package_names],
+            "user": [p for p in user_pkgs if p not in custom_package_names]
+        }
+
+    def _run_apt(self, command: str) -> list[str]:
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
@@ -24,17 +44,10 @@ class Apt(PackageManager):
             shell=True,
             text=True,
         )
-
-        stdout_data, stderr_data = process.communicate()
-        
+        stdout_data, _ = process.communicate()
         if process.returncode != 0:
-            if stderr_data:
-                err_console.print(stderr_data)
-            raise PackageManagerException(f"could not run '{command}'")
-
-        pkg_names = [line.strip() for line in stdout_data.splitlines() if line.strip()]
-        custom_package_names = [pkg.name for pkg in Custom().get_packages(use_memo=use_memo)]
-        return list(filter(lambda p: p not in custom_package_names, pkg_names))
+            return []
+        return [line.strip() for line in stdout_data.splitlines() if line.strip()]
 
     def install(self, packages: list[str], force=True) -> bool:
         if not packages:

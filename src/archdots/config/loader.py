@@ -1,6 +1,7 @@
 """Config loading and import resolution."""
 
 import os
+import yaml
 from pathlib import Path
 from typing import Any, Generator
 
@@ -49,8 +50,9 @@ def iter_imports(imports_any: Any, recursive: bool = False) -> Generator[Path, N
 
         if recursive:
             with open(import_path, "r") as f:
-                imported_config = yaml_rt.load(f)
-                if "import" in imported_config:
+                # Use PyYAML for fast check
+                imported_config = yaml.safe_load(f)
+                if isinstance(imported_config, dict) and "import" in imported_config:
                     yield from (Path(p) for p in imported_config["import"])
 
         yield import_path
@@ -87,9 +89,10 @@ def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
             raise SettingsException("invalid config file")
         
         with open(next_import, "r") as f:
-            next_config = yaml_rt.load(f)
+            # Use PyYAML for fast check
+            next_config = yaml.safe_load(f)
 
-        if "import" in next_config:
+        if isinstance(next_config, dict) and "import" in next_config:
             if isinstance(next_config["import"], str):
                 pending.append(Path(CONFIG_FOLDER) / next_config["import"])
             else:
@@ -99,16 +102,13 @@ def compare_mtime_with_imports(config: dict[str, Any], mtime: float) -> bool:
 
 
 def read_config_file(config_path: Path) -> dict[str, Any]:
-    """Load and parse a single config YAML file.
+    """Load and parse a single config YAML file using PyYAML for speed.
 
     Args:
         config_path: Path to config file
 
     Returns:
         Parsed configuration dict
-
-    Raises:
-        SettingsException: If file is not found or invalid
     """
     module_path = Path(MODULE_PATH)
     custom_folder = Path(CONFIG_FOLDER)
@@ -122,7 +122,7 @@ def read_config_file(config_path: Path) -> dict[str, Any]:
             f.write(default_config)
 
     with open(config_path, "r") as f:
-        config = yaml_rt.load(f)
+        # Use PyYAML for fast loading of the raw config
+        config = yaml.safe_load(f)
     
-    return config if isinstance(config, (dict, Any)) else {}
-
+    return config if isinstance(config, dict) else {}

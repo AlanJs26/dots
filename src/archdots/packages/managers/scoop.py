@@ -11,9 +11,12 @@ class Scoop(PackageManager):
     def __init__(self) -> None:
         super().__init__("scoop")
 
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+        return self._get_all_installed(use_memo)
+
     @progress_decorator("scoop packages")
     @memoize
-    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+    def _get_all_installed(self, use_memo: bool = False) -> list[str]:
         import json
 
         def extract_json_payload(raw_output: str) -> str:

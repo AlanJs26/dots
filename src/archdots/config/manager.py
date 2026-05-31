@@ -63,7 +63,8 @@ class ConfigManager(metaclass=SingletonMeta):
             and not compare_mtime_with_imports(config, self._cache_path.lstat().st_mtime)
         ):
             with open(self._cache_path, "r") as f:
-                cached_config = yaml_rt.load(f)
+                # Use PyYAML for fast internal cache read
+                cached_config = yaml.safe_load(f)
                 if isinstance(cached_config, dict):
                     return cached_config
                 warn_console.print("warning: invalid cached config")
@@ -73,17 +74,18 @@ class ConfigManager(metaclass=SingletonMeta):
             if key != "import":
                 return None
 
-            from deepmerge import always_merger
+            from archdots.config.merger import merge_unique
 
             merged_value = {}
             for import_path in iter_imports(value):
                 with open(import_path, "r") as f:
-                    imported_config = yaml_rt.load(f)
+                    # Use PyYAML for loading imports to be fast and avoid duplication bugs
+                    imported_config = yaml.safe_load(f)
                     if not isinstance(imported_config, dict):
                         raise SettingsException(
                             f'Invalid import. Contents of "{import_path}" is not a valid config'
                         )
-                always_merger.merge(merged_value, imported_config)
+                merge_unique(merged_value, imported_config)
 
             return merged_value
 
@@ -91,15 +93,18 @@ class ConfigManager(metaclass=SingletonMeta):
 
         # Merge with defaults
         with open(Path(MODULE_PATH) / "chezmoi_template/archdots/config.yaml", "r") as f:
-            default_config = yaml_rt.load(f) or {}
+            # Use PyYAML for loading defaults
+            default_config = yaml.safe_load(f) or {}
 
-        self._config_memo = {**default_config, **config}
+        from archdots.config.merger import merge_unique
+        self._config_memo = merge_unique(default_config, config)
         self._last_mtime = config_path.lstat().st_mtime
 
         # Save to cache
         os.makedirs(CACHE_FOLDER, exist_ok=True)
         with open(self._cache_path, "w") as f:
-            yaml_rt.dump(self._config_memo, f)
+            # Use PyYAML for fast internal cache write
+            yaml.safe_dump(self._config_memo, f)
 
         return self._config_memo
 
@@ -126,4 +131,3 @@ class ConfigManager(metaclass=SingletonMeta):
         # Invalidate cache after save
         self._config_memo = {}
         self._last_mtime = 0
-

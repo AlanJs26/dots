@@ -31,14 +31,24 @@ class Custom(PackageManager):
             )
         return filtered_pkgs
 
+    @progress_decorator("custom packages")
     @memoize
+    def _get_all_packages(self, use_memo=False) -> list[Package]:
+        """Internal memoized method to fetch all packages once."""
+        return get_packages(PACKAGES_FOLDER, ignore_platform=False)
+
     def get_packages(self, use_memo=False, ignore_platform=False) -> list[Package]:
-        return get_packages(PACKAGES_FOLDER, ignore_platform)
+        if ignore_platform:
+            return get_packages(PACKAGES_FOLDER, ignore_platform=True)
+        return self._get_all_packages(use_memo=use_memo)
+
+    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
+        return self._get_installed_cached(use_memo)
 
     @progress_decorator("custom packages")
     @memoize
-    def get_installed(self, use_memo=False, by_user=True) -> list[str]:
-        custom_packages = self.get_packages()
+    def _get_installed_cached(self, use_memo=False) -> list[str]:
+        custom_packages = self.get_packages(use_memo=use_memo)
         return [pkg.name for pkg in custom_packages if pkg.check(supress_output=True)]
 
     def install(self, packages: list[str] | list[Package], force=True) -> bool:

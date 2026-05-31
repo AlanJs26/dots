@@ -77,11 +77,6 @@ def get_packages(folder: str | Path, ignore_platform=False) -> list[Package]:
         ignore_platform=ignore_platform,
     )
 
-
-def parse_package_bash(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
-    return pkg_parser.parse_package_bash(pkgbuild_path)
-
-
 def parse_package_lark(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
     return pkg_parser.parse_package_lark(pkgbuild_path)
 
@@ -93,7 +88,6 @@ def package_from_path(folder_path: str | Path) -> Package:
 __all__ = [
     "Package",
     "get_packages",
-    "parse_package_bash",
     "parse_package_lark",
     "package_from_path",
 ]

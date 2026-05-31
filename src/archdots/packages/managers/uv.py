@@ -13,15 +13,35 @@ class Uv(PackageManager):
     def __init__(self) -> None:
         super().__init__("uv")
 
+    def get_installed(self, use_memo: bool = False, by_user: bool = True) -> list[str]:
+        """Get list of installed uv tools."""
+        all_tools = self._get_all_installed(use_memo)
+        
+        if not by_user:
+            return all_tools
+        
+        # Filter for display (most specific version only)
+        # Note: In our current _get_all_installed, the list contains:
+        # [name, name@major.minor, name@full]
+        # We want to return only the most specific (longest) one per package name
+        import collections
+        tool_map = collections.defaultdict(list)
+        for tool in all_tools:
+            name = tool.split("@", 1)[0]
+            tool_map[name].append(tool)
+        
+        result = []
+        for name, versions in tool_map.items():
+            # Sort by length descending to get the most specific version
+            versions.sort(key=len, reverse=True)
+            result.append(versions[0])
+        
+        return result
+
     @progress_decorator("uv tools")
     @memoize
-    def get_installed(self, use_memo: bool = False, by_user: bool = True) -> list[str]:
-        """Get list of installed uv tools.
-        
-        Note: uv tool list output format is typically:
-        package vX.Y.Z [CPython 3.12.1]
-        - binary
-        """
+    def _get_all_installed(self, use_memo: bool = False) -> list[str]:
+        """Internal method to fetch all installed tools and their aliases."""
         process = subprocess.Popen(
             "uv tool list --show-python",
             stdout=subprocess.PIPE,
@@ -39,8 +59,6 @@ class Uv(PackageManager):
 
         tools = []
         import re
-        # Pattern to match: package v1.2.3 [CPython 3.12.1]
-        # or just: package v1.2.3
         pkg_pattern = re.compile(r"^([\w-]+)\s+v[\d.]+(?:\s+\[(?:CPython|PyPy)\s+([\d.]+)])?")
 
         for line in stdout.splitlines():
@@ -53,22 +71,15 @@ class Uv(PackageManager):
                 name = match.group(1)
                 py_version_full = match.group(2)
                 
-                if not by_user:
-                    tools.append(name)
+                tools.append(name)
                 
                 if py_version_full:
-                    # Add major.minor version (e.g. 3.12)
                     version_parts = py_version_full.split(".")
                     if len(version_parts) >= 2:
                         major_minor = f"{version_parts[0]}.{version_parts[1]}"
-                        if not by_user:
-                            tools.append(f"{name}@{major_minor}")
-                        
-                        # Most specific version
-                        tools.append(f"{name}@{py_version_full}")
-                elif by_user:
-                    # No version info found, just add name
-                    tools.append(name)
+                        tools.append(f"{name}@{major_minor}")
+                        if py_version_full != major_minor:
+                            tools.append(f"{name}@{py_version_full}")
 
         return tools
 
@@ -122,6 +133,30 @@ class Uv(PackageManager):
     def is_available(self) -> bool:
         """Check if 'uv' is installed."""
         return which("uv") is not None
+
+    def is_installed(self, package: str, use_memo: bool = False) -> bool:
+        """Check if a specific package is installed.
+        
+        Args:
+            package: Package name to check
+            use_memo: Use cached results
+            
+        Returns:
+            True if installed, False otherwise
+        """
+        return package in self.get_installed(use_memo, by_user=False)
+
+    def is_installed_in_data(self, package: str, installed_data: list[str]) -> bool:
+        """Check if a package is in the provided installed data list.
+        
+        Args:
+            package: Package name to check
+            installed_data: List of installed package names (should be from by_user=False)
+            
+        Returns:
+            True if in data, False otherwise
+        """
+        return package in installed_data
 
     def is_managed(self, installed_pkg: str, configured_pkgs: list[str]) -> bool:
         """Check if an installed uv tool is managed by config.

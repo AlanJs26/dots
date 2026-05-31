@@ -41,14 +41,25 @@ def run(text: str):
     return stdout
 
 
-managed_packages = sum(len(pkgs) for pkgs in get_managed_packages().values())
-unmanaged_packages = sum(len(pkgs) for pkgs in get_unmanaged_packages().values())
-pending_packages = sum(len(pkgs) for pkgs in get_pending_packages().values())
+# Use cache for these computations
+managed_pkgs_dict = get_managed_packages(use_memo=True)
+unmanaged_pkgs_dict = get_unmanaged_packages(use_memo=True)
+pending_pkgs_dict = get_pending_packages(use_memo=True)
+
+managed_packages = sum(len(pkgs) for pkgs in managed_pkgs_dict.values())
+unmanaged_packages = sum(len(pkgs) for pkgs in unmanaged_pkgs_dict.values())
+pending_packages = sum(len(pkgs) for pkgs in pending_pkgs_dict.values())
 
 ignored_packages = 0
 
-all_custom_pkg_names = [pkg.name for pkg in Custom().get_packages(True, ignore_platform=True)]
-unsupported_custom = set(all_custom_pkg_names) - set(pkg.name for pkg in Custom().get_packages(True))
+custom_manager = Custom()
+custom_packages_all = custom_manager.get_packages(use_memo=True, ignore_platform=True)
+custom_packages_supported = custom_manager.get_packages(use_memo=True)
+
+all_custom_pkg_names = [pkg.name for pkg in custom_packages_all]
+unsupported_custom = set(all_custom_pkg_names) - set(pkg.name for pkg in custom_packages_supported)
+
+custom_pkg_names_supported = [pkg.name for pkg in custom_packages_supported]
 
 for pm in package_managers:
     if pm.name == "health":
@@ -61,9 +72,7 @@ for pm in package_managers:
 
     obscured = set()
     if pm.name != "custom":
-        obscured = set(pkg.name for pkg in Custom().get_packages(True)).intersection(
-            configured
-        )
+        obscured = set(custom_pkg_names_supported).intersection(configured)
 
     pending = configured - installed - obscured
 
@@ -72,8 +81,8 @@ for pm in package_managers:
             ignored_packages += 1
 
 lost_candidates = (
-    set(pkg.name for pkg in Custom().get_packages(True))
-    .difference(Custom().get_installed(True))
+    set(custom_pkg_names_supported)
+    .difference(custom_manager.get_installed(use_memo=True))
     .difference(config.get("pkgs", {}).get("custom", []))
 )
 
