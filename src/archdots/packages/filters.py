@@ -87,17 +87,18 @@ def get_unmanaged_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     warn_pkg_ignored_conflicts(config)
 
     package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers if pm.name not in _IGNORED_PMS}
+    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo, by_user=True) for pm in package_managers if pm.name not in _IGNORED_PMS}
 
     unmanaged_packages: dict[PackageManager, list[str]] = {}
     for pm in installed_pkgs_by_pm:
         configured_pkgs = _normalize_pm_list(config, "pkgs", pm.name)
-        pkgs = _sorted_unique(list(set(installed_pkgs_by_pm[pm]) - set(configured_pkgs)))
-        unmanaged_packages[pm] = [
+        unmanaged_list = [
             pkg_name
-            for pkg_name in pkgs
-            if not is_package_ignored(config, pm.name, pkg_name)
+            for pkg_name in installed_pkgs_by_pm[pm]
+            if not pm.is_managed(pkg_name, configured_pkgs)
+            and not is_package_ignored(config, pm.name, pkg_name)
         ]
+        unmanaged_packages[pm] = _sorted_unique(unmanaged_list)
 
     return unmanaged_packages
 
@@ -107,18 +108,19 @@ def get_managed_packages(use_memo=True) -> dict[PackageManager, list[str]]:
     warn_pkg_ignored_conflicts(config)
 
     package_managers = get_package_managers()
-    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo) for pm in package_managers if pm.name not in _IGNORED_PMS}
+    installed_pkgs_by_pm = {pm: pm.get_installed(use_memo, by_user=True) for pm in package_managers if pm.name not in _IGNORED_PMS}
 
-    installed_packages: dict[PackageManager, list[str]] = {}
+    managed_packages: dict[PackageManager, list[str]] = {}
     for pm in installed_pkgs_by_pm:
         configured_pkgs = _normalize_pm_list(config, "pkgs", pm.name)
-        installed_packages[pm] = [
+        managed_list = [
             pkg_name
-            for pkg_name in _sorted_unique(installed_pkgs_by_pm[pm])
-            if pkg_name in configured_pkgs
+            for pkg_name in installed_pkgs_by_pm[pm]
+            if pm.is_managed(pkg_name, configured_pkgs)
             and not is_package_ignored(config, pm.name, pkg_name)
         ]
-    return installed_packages
+        managed_packages[pm] = _sorted_unique(managed_list)
+    return managed_packages
 
 
 def get_pending_packages(use_memo=True) -> dict[PackageManager, list[str]]:
@@ -145,15 +147,13 @@ def get_pending_packages(use_memo=True) -> dict[PackageManager, list[str]]:
         if pm.name != custom_pm_name:
             obscured_packages = set(custom_pkg_names).intersection(configured_pkgs)
 
-        pkgs = _sorted_unique(
-            list(set(configured_pkgs) - set(installed_pkgs_by_pm[pm]) - obscured_packages)
-        )
-        pending_packages[pm] = pkgs
-
-        pending_packages[pm] = [
+        pkgs = [
             pkg_name
-            for pkg_name in pending_packages[pm]
-            if not is_package_ignored(config, pm.name, pkg_name)
+            for pkg_name in configured_pkgs
+            if not pm.is_installed(pkg_name, use_memo)
+            and pkg_name not in obscured_packages
+            and not is_package_ignored(config, pm.name, pkg_name)
         ]
+        pending_packages[pm] = _sorted_unique(pkgs)
 
     return pending_packages

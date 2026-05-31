@@ -7,6 +7,6 @@ def check_packages(packages: list[str], use_memo=False) -> dict[str, bool]:
     statuses: dict[str, bool] = {}
     for pm, pkgs in pkgs_by_pm.items():
         for pkg in pkgs:
-            statuses[pkg] = pkg in pm.get_installed(use_memo)
+            statuses[pkg] = pm.is_installed(pkg, use_memo)
 
     return statuses

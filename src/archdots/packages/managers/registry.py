@@ -21,9 +21,10 @@ def get_package_managers() -> list[PackageManager]:
         from archdots.packages.managers.scoop import Scoop
         from archdots.packages.managers.npm import Npm
         from archdots.packages.managers.winget import Winget
+        from archdots.packages.managers.uv import Uv
 
         _package_managers = [
-            pm for pm in [Pacman(), Apt(), Npm(), Custom(), Health(), Winget(), Scoop()] if pm.is_available()
+            pm for pm in [Pacman(), Apt(), Npm(), Uv(), Custom(), Health(), Winget(), Scoop()] if pm.is_available()
         ]
 
     return _package_managers

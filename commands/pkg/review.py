@@ -25,7 +25,7 @@ from archdots.packages.filters import (
     get_pending_packages,
 )
 from archdots.config.manager import ConfigManager
-from archdots.ui.console import print_title, title, warn_console
+from archdots.ui.console import print_title, title, warn_console, confirm
 
 from rich.live import Live
 from rich.table import Table
@@ -337,7 +337,7 @@ if packages_to_uninstall:
     print_title(
         f'about to uninstall the following packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_uninstall)}'
     )
-    if Confirm.ask(title("Proceed?"), default=True):
+    if confirm("Proceed?", default=True):
         for pm_name, grouped_rows in itertools.groupby(
             packages_to_uninstall, lambda row: row.pm
         ):
@@ -353,7 +353,7 @@ if packages_to_install:
     print_title(
         f'about to install the following pending packages: [cyan]{"  ".join(f"{row.pm}:{row.pkg}" for row in packages_to_install)}'
     )
-    if Confirm.ask(title("Proceed?"), default=True):
+    if confirm("Proceed?", default=True):
         for pm_name, grouped_rows in itertools.groupby(
             packages_to_install, lambda row: row.pm
         ):
@@ -384,7 +384,7 @@ if packages_to_delete:
     print_title(
         f'about to delete the following lost packages: [cyan]{"  ".join(row.pkg for row in packages_to_delete)}'
     )
-    if Confirm.ask(title("Proceed?"), default=True):
+    if confirm("Proceed?", default=True):
         for row in packages_to_delete:
             package_path = Path(PACKAGES_FOLDER) / row.pkg
             if package_path.is_dir():

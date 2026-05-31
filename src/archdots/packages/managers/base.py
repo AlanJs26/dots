@@ -66,3 +66,27 @@ class PackageManager(ABC, metaclass=SingletonMeta):
             List of installed package names
         """
         raise NotImplementedError
+
+    def is_installed(self, package: str, use_memo: bool = False) -> bool:
+        """Check if a specific package is installed.
+        
+        Args:
+            package: Package name to check
+            use_memo: Use cached results
+            
+        Returns:
+            True if installed, False otherwise
+        """
+        return package in self.get_installed(use_memo, by_user=False)
+
+    def is_managed(self, installed_pkg: str, configured_pkgs: list[str]) -> bool:
+        """Check if an installed package is considered managed by the configuration.
+        
+        Args:
+            installed_pkg: Name of the installed package (from get_installed(by_user=True))
+            configured_pkgs: List of package names in the config
+            
+        Returns:
+            True if managed, False otherwise
+        """
+        return installed_pkg in configured_pkgs
