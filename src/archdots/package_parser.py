@@ -4,8 +4,7 @@ from lark.exceptions import LarkError
 from archdots.core.exceptions import ParseException
 from pathlib import Path
 
-parser = Lark(
-    r"""
+parser = Lark(r"""
         start: _NL? (item|function|_NL)+
 
         ?value: string
@@ -17,7 +16,7 @@ parser = Lark(
 
         !boolean: "true" | "false" | "True" | "False" 
         string: ESCAPED_STRING
-        array: "(" string* ")"
+        array: "(" (string | _NL)* ")"
 
         function: NAME "(" ")" "{" content "}" _NL?
         content: (TEXT | "{" content "}")*
@@ -33,8 +32,7 @@ parser = Lark(
         %import common.SH_COMMENT
         %ignore WS_INLINE 
         %ignore SH_COMMENT
-    """
-)
+    """)
 
 
 class Item(NamedTuple):
@@ -76,10 +74,11 @@ class PackageTransformer(Transformer):
     def start(self, items):
         return items
 
+
 def parse_from_path(path: str | Path):
-    with open(path, "r", encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         text = f.read()
-    
+
     try:
         tree = parser.parse(text)
     except LarkError as e:
@@ -90,3 +89,4 @@ def parse_from_path(path: str | Path):
     funcs = [func for func in parsed_items if isinstance(func, Function)]
 
     return items, funcs
+

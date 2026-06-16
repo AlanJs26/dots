@@ -10,7 +10,12 @@ from archdots.core.platforms.registry import get_current_platform
 current_platform = get_current_platform()
 
 if current_platform.supports("windows"):
-    _git_sh = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git" / "bin" / "sh.exe"
+    _git_sh = (
+        Path(os.environ.get("ProgramFiles", "C:/Program Files"))
+        / "Git"
+        / "bin"
+        / "sh.exe"
+    )
     if _git_sh.exists():
         BASH_CMD = f'"{_git_sh}"'
     else:
@@ -18,27 +23,39 @@ if current_platform.supports("windows"):
         if _bash:
             BASH_CMD = f'"{_bash}"'
         else:
-            warn_console.print("No valid bash/sh shell found (looked in Program Files/Git/bin and PATH). Execution may fail.")
+            warn_console.print(
+                "No valid bash/sh shell found (looked in Program Files/Git/bin and PATH). Execution may fail."
+            )
             BASH_CMD = "sh"
 else:
     BASH_CMD = "bash"
 
 
-def run_pkgbuild_function(package, name: str, supress_output=False, sources: list[str] | None = None) -> int:
+def run_pkgbuild_function(
+    package, name: str, supress_output=False, sources: list[str] | None = None
+) -> int:
     """Execute one function from a package PKGBUILD script."""
     sources = sources or []
     os.makedirs(package.get_cache_folder(), exist_ok=True)
-    sudo = 'gsudo' if get_current_platform().supports("windows") else 'sudo'
+    sudo = "gsudo" if get_current_platform().supports("windows") else "sudo"
 
     from archdots.package_parser import parse_from_path
+
     _, parsed_functions = parse_from_path(package.pkgbuild)
-    
-    found_function = next(filter(lambda func: func.name in (name, f"{name}_powershell"), parsed_functions), None)
+
+    found_function = next(
+        filter(
+            lambda func: func.name in (name, f"{name}_powershell"), parsed_functions
+        ),
+        None,
+    )
     if not found_function:
         raise PackageException(
             f'tried to executed an unknown PKGBUILD function "{name}"',
             package,
         )
+
+    is_check_function = name.startswith("check")
 
     if found_function.name.endswith("_powershell"):
         hashtable = ""
@@ -76,9 +93,11 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
 
         powershell_cmd = which("pwsh") or which("powershell")
         if not powershell_cmd:
-            warn_console.print("PowerShell (pwsh or powershell) not found. Execution may fail.")
+            warn_console.print(
+                "PowerShell (pwsh or powershell) not found. Execution may fail."
+            )
             powershell_cmd = "pwsh"
-        command = f"{sudo if package.elevated else ''} \"{powershell_cmd}\" -ExecutionPolicy ByPass -File \"{file_command_path.resolve()}\"".strip()
+        command = f"{sudo if package.elevated and not is_check_function else ''} \"{powershell_cmd}\" -ExecutionPolicy ByPass -File \"{file_command_path.resolve()}\"".strip()
 
         process = subprocess.Popen(
             command,
@@ -98,10 +117,12 @@ def run_pkgbuild_function(package, name: str, supress_output=False, sources: lis
         file_command_path = Path(package.get_cache_folder()) / f"{name}.sh"
         with open(file_command_path, "w", encoding="utf-8") as f:
             # We fix line endings avoiding windows \r\n issues on bash
-            content = found_function.content.replace('\r\n', '\n')
-            f.write(f'PKGPATH="{os.path.dirname(package.pkgbuild).replace(os.sep, "/")}"\n{bashdict}\n\n{content}\n')
+            content = found_function.content.replace("\r\n", "\n")
+            f.write(
+                f'PKGPATH="{os.path.dirname(package.pkgbuild).replace(os.sep, "/")}"\n{bashdict}\n\n{content}\n'
+            )
 
-        command = f"{sudo if package.elevated else ''} {BASH_CMD} \"{file_command_path.resolve()}\"".strip()
+        command = f"{sudo if package.elevated and not is_check_function else ''} {BASH_CMD} \"{file_command_path.resolve()}\"".strip()
 
         process = subprocess.Popen(
             command,
@@ -123,7 +144,9 @@ def check(package, supress_output=False):
     if package.source_on_check:
         sources = package.fetch_sources()
         os.makedirs(package.get_cache_folder(), exist_ok=True)
-        with open(Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8") as f:
+        with open(
+            Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8"
+        ) as f:
             f.writelines(sources)
     else:
         sources = []
@@ -134,12 +157,18 @@ def check(package, supress_output=False):
 def update(package, supress_output=False, force=False):
     if not supress_output:
         print_title(f"Updating [cyan]{package.name}")
-    if not force and package.check(supress_output) and "install" not in package.available_functions:
+    if (
+        not force
+        and package.check(supress_output)
+        and "install" not in package.available_functions
+    ):
         print_title(f"{package.name} Already installed", color="yellow")
         return
 
     sources = package.fetch_sources()
-    with open(Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8") as f:
+    with open(
+        Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8"
+    ) as f:
         f.writelines(sources)
 
     status = run_pkgbuild_function(package, "update", supress_output, sources) == 0
@@ -156,7 +185,9 @@ def install(package, supress_output=False, force=False):
         return
 
     sources = package.fetch_sources()
-    with open(Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8") as f:
+    with open(
+        Path(package.get_cache_folder()) / "sources.txt", "w", encoding="utf-8"
+    ) as f:
         f.writelines(sources)
 
     status = run_pkgbuild_function(package, "install", supress_output, sources) == 0

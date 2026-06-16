@@ -1,9 +1,10 @@
 import os
 from archdots.core.platforms.base import Platform
 
+
 class ArchLinux(Platform):
     name = "archlinux"
-    base = "linux"
+    base = ["linux"]
 
     def is_current(self) -> bool:
         if os.path.exists("/etc/os-release"):

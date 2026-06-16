@@ -1,12 +1,9 @@
 import os
-import re
-import subprocess
 from pathlib import Path
 from typing import Any
-import lark
 
-from archdots.core.constants import PLATFORM
-from archdots.core.exceptions import PackageException, ParseException
+from archdots.core.exceptions import PackageException
+
 
 def parse_package_lark(pkgbuild_path: str | Path) -> tuple[dict[str, Any], list[str]]:
     from archdots.package_parser import parse_from_path
@@ -28,8 +25,9 @@ def package_from_path(folder_path: str | Path, package_cls):
 
     # Merge platform-specific dependencies
     from archdots.core.platforms.registry import get_current_platform
+
     current_platform = get_current_platform()
-    
+
     for key in list(fields_dict.keys()):
         if key.endswith("_depends"):
             plat_name = key.removesuffix("_depends")
@@ -44,7 +42,7 @@ def package_from_path(folder_path: str | Path, package_cls):
                     fields_dict["depends"].append(str(val))
             del fields_dict[key]
 
-    funcs = [f.removesuffix('_powershell') for f in funcs]
+    funcs = [f.removesuffix("_powershell") for f in funcs]
 
     known_fields = ["depends", "description", "source", "url"]
     known_funcs = [
@@ -72,6 +70,7 @@ def package_from_path(folder_path: str | Path, package_cls):
 
     if "platform" in fields_dict:
         from archdots.core.platforms.registry import get_platform_by_name
+
         if not get_platform_by_name(fields_dict["platform"]):
             raise PackageException(
                 f'invalid platform: {fields_dict["platform"]}',
@@ -90,7 +89,15 @@ def package_from_path(folder_path: str | Path, package_cls):
         )
 
     # Filter fields_dict to only include fields known by the Package dataclass
-    allowed_fields = ["description", "url", "depends", "source", "platform", "source_on_check", "elevated"]
+    allowed_fields = [
+        "description",
+        "url",
+        "depends",
+        "source",
+        "platform",
+        "source_on_check",
+        "elevated",
+    ]
     filtered_fields = {k: v for k, v in fields_dict.items() if k in allowed_fields}
 
     return package_cls(
@@ -114,7 +121,8 @@ def get_packages(folder: str | Path, package_from_path_fn, ignore_platform=False
     ]
     if ignore_platform:
         return packages
-        
+
     from archdots.core.platforms.registry import get_current_platform
+
     current_platform = get_current_platform()
     return list(filter(lambda pkg: current_platform.supports(pkg.platform), packages))

@@ -3,6 +3,7 @@ from archdots.core.platforms.base import Platform
 _platforms: list[Platform] = []
 _current_platform: Platform | None = None
 
+
 def get_all_platforms() -> list[Platform]:
     global _platforms
     if not _platforms:
@@ -28,11 +29,13 @@ def get_all_platforms() -> list[Platform]:
         ]
     return _platforms
 
+
 def get_platform_by_name(name: str) -> Platform | None:
     for p in get_all_platforms():
         if p.name == name:
             return p
     return None
+
 
 def get_current_platform() -> Platform:
     global _current_platform
@@ -45,5 +48,6 @@ def get_current_platform() -> Platform:
             import os
             from archdots.core.platforms.windows import Windows
             from archdots.core.platforms.linux import Linux
+
             _current_platform = Windows() if os.name == "nt" else Linux()
     return _current_platform

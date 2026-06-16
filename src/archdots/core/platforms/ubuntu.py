@@ -1,9 +1,10 @@
 import os
 from archdots.core.platforms.base import Platform
 
+
 class Ubuntu(Platform):
     name = "ubuntu"
-    base = "debian"
+    base = ["debian"]
 
     def is_current(self) -> bool:
         if os.path.exists("/etc/os-release"):
